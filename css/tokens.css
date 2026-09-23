@@ -1,0 +1,93 @@
+/* Royal Solutions — tokens de diseño
+   Neutros cálidos + un único acento (naranja señalización). */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+:root {
+  /* tipografía */
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --fs-xs: 11px;
+  --fs-sm: 13px;
+  --fs-md: 15px;
+  --fs-lg: 17px;
+  --fs-xl: 22px;
+  --fs-2xl: 28px;
+  --lh: 1.45;
+
+  /* espaciado (grilla 4px) */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px; --s10: 40px;
+
+  /* radios */
+  --r-btn: 4px;
+  --r-card: 6px;
+  --r-pill: 999px;
+
+  --t-fast: 150ms;
+  --t-med: 200ms;
+  --ease: cubic-bezier(.2, .7, .3, 1);
+
+  /* tema claro */
+  --bg: #F6F4F1;
+  --surface: #FFFFFF;
+  --surface-2: #EFECE8;
+  --surface-3: #E6E2DC;
+  --border: #DDD8D1;
+  --border-strong: #C6BFB5;
+  --text: #1F1B17;
+  --text-2: #5C554D;
+  --text-3: #8A8279;
+  --accent: #E8590C;
+  --accent-hover: #CF4F0A;
+  --accent-text: #FFFFFF;
+  --accent-soft: #FDEBDD;
+  --ok: #2B8A3E;
+  --ok-soft: #E3F4E6;
+  --warn: #B26A00;
+  --warn-soft: #FDF1DA;
+  --danger: #C92A2A;
+  --danger-soft: #FBE4E4;
+  --info: #1C6DD0;
+  --info-soft: #E2EDFB;
+  --focus: #1C6DD0;
+  --overlay: rgba(20, 16, 12, .45);
+  --shadow-sheet: 0 -8px 24px rgba(20, 16, 12, .14);
+  --shadow-modal: 0 12px 32px rgba(20, 16, 12, .18);
+  --map-land: #EAE6DF;
+  --map-block: #E0DBD2;
+  --map-river: #B9D2EA;
+  --map-road: #FFFFFF;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #141210;
+  --surface: #1C1916;
+  --surface-2: #24201C;
+  --surface-3: #2D2823;
+  --border: #332D27;
+  --border-strong: #4A423A;
+  --text: #F1ECE6;
+  --text-2: #B8AFA5;
+  --text-3: #857C72;
+  --accent: #F0692A;
+  --accent-hover: #FF7A3D;
+  --accent-text: #1A0E06;
+  --accent-soft: #3A2215;
+  --ok: #51B464;
+  --ok-soft: #17291B;
+  --warn: #E0A33A;
+  --warn-soft: #2E2410;
+  --danger: #EF6461;
+  --danger-soft: #331918;
+  --info: #5C9CEB;
+  --info-soft: #152336;
+  --focus: #5C9CEB;
+  --overlay: rgba(0, 0, 0, .6);
+  --shadow-sheet: 0 -8px 24px rgba(0, 0, 0, .5);
+  --shadow-modal: 0 12px 32px rgba(0, 0, 0, .5);
+  --map-land: #1F1C19;
+  --map-block: #2A2622;
+  --map-river: #1E3347;
+  --map-road: #3A342E;
+  color-scheme: dark;
+}
