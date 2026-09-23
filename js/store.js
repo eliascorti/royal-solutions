@@ -888,6 +888,16 @@ export function resolveDispute(disputeId, { favor, montoAjustado, penalizar, not
   });
 }
 
+/** Botón de ayuda / emergencia durante una orden: avisa a soporte con prioridad. */
+export function requestHelp(orderId, userId, motivo) {
+  return mutate(() => {
+    const o = order(orderId);
+    o.timeline.push({ estado: o.estado, t: now(), actor: shortName(user(userId)), texto: `Pidió ayuda a soporte: ${motivo}` });
+    notifyAdmin('Pedido de ayuda durante una orden', `${orderId} · ${motivo}`, `/ordenes/${orderId}`);
+    audit({ id: userId, rol: userId === o.clienteId ? 'cliente' : 'prestador' }, 'soporte.ayuda', 'orden', orderId, motivo);
+  });
+}
+
 /* ───────────── chat ───────────── */
 
 const LEAK = [
