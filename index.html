@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Royal Solutions</title>
+  <meta name="description" content="Royal Solutions — oficios y changas en Córdoba. Demo navegable: app cliente, app prestador y panel admin.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23E8590C'/%3E%3Ctext x='16' y='22' font-family='monospace' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
+  <script>try { document.documentElement.dataset.theme = localStorage.getItem('rs_theme_index') || 'light'; } catch (e) { document.documentElement.dataset.theme = 'light'; }</script>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <style>
+    body { min-height: 100vh; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 16px 48px; }
+    header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 48px; }
+    .logo { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+    .logo .mark { width: 24px; height: 24px; background: var(--accent); color: var(--accent-text); border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
+    .hero h1 { font-size: 34px; line-height: 1.15; letter-spacing: -.02em; max-width: 720px; }
+    .hero p { color: var(--text-2); font-size: var(--fs-lg); max-width: 640px; margin-top: 12px; }
+    .apps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r-card); overflow: hidden; margin-top: 40px; }
+    .app { background: var(--surface); padding: 20px; display: flex; flex-direction: column; gap: 10px; text-decoration: none; color: inherit; min-height: 180px; }
+    a.app:hover { background: var(--surface-2); }
+    .app .k { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-3); }
+    .app h2 { font-size: var(--fs-lg); }
+    .app p { color: var(--text-2); font-size: var(--fs-sm); flex: 1; }
+    .app .go { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); font-weight: 500; color: var(--accent); }
+    .app.off { opacity: .55; cursor: not-allowed; }
+    .row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 24px; }
+    .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--border); }
+    .facts b { display: block; font-family: var(--font-mono); font-size: 22px; font-weight: 500; }
+    .facts span { font-size: var(--fs-sm); color: var(--text-2); }
+    .note { margin-top: 40px; font-size: var(--fs-sm); color: var(--text-3); }
+    /* vista demo */
+    .demo { display: none; min-height: 100vh; padding: 16px; flex-direction: column; gap: 12px; background: var(--surface-3); }
+    body.demo-on .wrap { display: none; }
+    body.demo-on .demo { display: flex; }
+    .demo-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .phones { display: flex; gap: 32px; justify-content: center; align-items: flex-start; flex: 1; }
+    .phone { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+    .phone .lbl { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-2); text-transform: uppercase; letter-spacing: .06em; }
+    .frame { width: 390px; height: 844px; border: 1px solid var(--border-strong); border-radius: 18px; outline: 6px solid var(--text); overflow: hidden; background: var(--bg); transform-origin: top center; }
+    .frame iframe { width: 390px; height: 844px; border: 0; display: block; }
+    @media (max-width: 900px) {
+      .apps, .facts { grid-template-columns: 1fr; }
+      .facts { grid-template-columns: 1fr 1fr; }
+      .hero h1 { font-size: 26px; }
+      .phones { flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <span class="logo"><span class="mark">R</span>Royal Solutions</span>
+      <span class="badge outline mono">MVP · v0.9.2 · Córdoba</span>
+    </header>
+
+    <section class="hero">
+      <h1>Oficios y changas cerca tuyo, con reputación verificada y acuerdo dentro de la plataforma.</h1>
+      <p>Demo navegable de punta a punta. Las apps comparten el mismo estado en este navegador: lo que hacés en una se refleja en las otras en tiempo real.</p>
+      <div class="row-actions">
+        <button class="btn primary" id="demoBtn">Vista demo · cliente + prestador</button>
+        <a class="btn" href="cliente.html">Abrir app cliente</a>
+      </div>
+    </section>
+
+    <nav class="apps" aria-label="Aplicaciones">
+      <a class="app" href="cliente.html">
+        <span class="k">01 · MOBILE</span><h2>App Cliente</h2>
+        <p>Publicar una changa en menos de 45 s, comparar postulaciones, seguir al prestador en el mapa, pagar y calificar.</p>
+        <span class="go">Entrar como Lucía →</span>
+      </a>
+      <a class="app" href="prestador.html">
+        <span class="k">02 · MOBILE</span><h2>App Prestador</h2>
+        <p>Alta con verificación por nivel de riesgo, feed de changas por distancia, agenda, billetera y deuda de comisión por efectivo.</p>
+        <span class="go">Entrar como Ramiro →</span>
+      </a>
+      <div class="app off" data-tip="Próximamente" aria-disabled="true">
+        <span class="k">03 · WEB</span><h2>Panel Admin</h2>
+        <p>Verificaciones, órdenes, disputas, comisiones, tracción y auditoría.</p>
+        <span class="go" style="color:var(--text-3)">En construcción</span>
+      </div>
+    </nav>
+
+    <section class="facts" aria-label="Diferenciales">
+      <div><b>3–5%</b><span>comisión según rubro (vs. hasta 40%)</span></div>
+      <div><b>DNI + matrícula</b><span>verificación según riesgo del rubro</span></div>
+      <div><b>Efectivo</b><span>con comisión diferida, además de digital</span></div>
+      <div><b>100%</b><span>reseñas de órdenes finalizadas</span></div>
+    </section>
+
+    <p class="note">Panel de demo oculto: mantené presionado el logo 2 s, tocá 5 veces la versión en Perfil o agregá <span class="mono">?dev=1</span> a la URL. <span class="mono">?reset=1</span> vuelve a cargar los datos de ejemplo.</p>
+  </div>
+
+  <section class="demo" aria-label="Vista demo">
+    <div class="demo-bar">
+      <span class="logo"><span class="mark">R</span>Vista demo</span>
+      <div class="row">
+        <button class="btn sm" id="reloadBtn">Recargar teléfonos</button>
+        <button class="btn sm" id="closeBtn">Salir de la vista demo</button>
+      </div>
+    </div>
+    <div class="phones" id="phones">
+      <div class="phone"><span class="lbl">Cliente</span><div class="frame"><iframe title="App cliente" data-src="cliente.html"></iframe></div></div>
+      <div class="phone"><span class="lbl">Prestador</span><div class="frame"><iframe title="App prestador" data-src="prestador.html"></iframe></div></div>
+    </div>
+  </section>
+
+  <script>
+    const frames = [...document.querySelectorAll('.demo iframe')];
+    function fit() {
+      // Escala los teléfonos para que entren en la altura disponible
+      const avail = window.innerHeight - 90;
+      const k = Math.min(1, avail / 856);
+      document.querySelectorAll('.frame').forEach((f) => {
+        f.style.transform = `scale(${k})`;
+        f.parentElement.style.height = (844 * k + 30) + 'px';
+      });
+    }
+    function openDemo() {
+      document.body.classList.add('demo-on');
+      frames.forEach((f) => { if (!f.src) f.src = f.dataset.src; });
+      fit();
+      history.replaceState(null, '', '#demo');
+    }
+    function closeDemo() { document.body.classList.remove('demo-on'); history.replaceState(null, '', location.pathname); }
+    document.getElementById('demoBtn').onclick = openDemo;
+    document.getElementById('closeBtn').onclick = closeDemo;
+    document.getElementById('reloadBtn').onclick = () => frames.forEach((f) => { f.src = f.dataset.src; });
+    window.addEventListener('resize', fit);
+    if (location.hash === '#demo') openDemo();
+  </script>
+</body>
+</html>

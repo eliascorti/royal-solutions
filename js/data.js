@@ -1,6 +1,6 @@
 // Datos de referencia: rubros, barrios, documentos por nivel de riesgo.
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 export const APP_VERSION = 'v0.9.2';
 
 // Riesgo del rubro → documentación exigida y comisión.

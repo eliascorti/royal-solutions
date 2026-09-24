@@ -169,8 +169,9 @@ export function buildSeed(NOW) {
   const TAGS_C = ['Puntual', 'Prolijo', 'Explicó bien', 'Precio justo', 'Resolvió rápido'];
   const TAGS_P = ['Claro con el problema', 'Pagó en tiempo', 'Buena predisposición', 'Dirección precisa'];
   const starsFor = (p) => {
-    const bias = p === ramiro ? 0.9 : p._o.nuevo ? 1 : p.estado === 'suspendido' ? 0.35 : 0.62;
     const x = rand();
+    if (p === ramiro) return x < 0.88 ? 5 : x < 0.98 ? 4 : 3;
+    const bias = p.estado === 'suspendido' ? 0.35 : 0.78;
     if (x < bias * 0.8) return 5;
     if (x < bias * 0.8 + 0.25) return 4;
     if (x < 0.95) return 3;

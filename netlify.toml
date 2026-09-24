@@ -1,0 +1,23 @@
+# Sitio estático: no hay build, se publica la raíz tal cual.
+[build]
+  publish = "."
+  command = ""
+
+# Los módulos JS/CSS se revalidan en cada carga para que un deploy nuevo
+# no deje a la demo con archivos viejos en caché.
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"

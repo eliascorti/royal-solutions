@@ -446,7 +446,7 @@ export function createRequest(clientId, data) {
     const abiertas = db.requests.filter((r) => r.clienteId === clientId && ['abierta', 'con_postulaciones'].includes(r.estado)).length;
     if (abiertas >= db.config.maxSolicitudesAbiertas) throw new AppError(`Tenés ${abiertas} changas abiertas. Cerrá o cancelá alguna para publicar otra.`);
     const req = {
-      id: nextId('SOL'), clienteId, rubroId: data.rubroId, descripcion: data.descripcion.trim(), fotos: data.fotos || [],
+      id: nextId('SOL'), clienteId: clientId, rubroId: data.rubroId, descripcion: data.descripcion.trim(), fotos: data.fotos || [],
       direccion: data.direccion, cuando: data.cuando, urgente: !!data.urgente, presupuestoRef: data.presupuestoRef || null,
       medioPrevisto: data.medio, estado: 'abierta', creadoEn: now(), venceEn: now() + 48 * 3600000,
       historial: [{ estado: 'abierta', t: now(), texto: 'Changa publicada' }],
@@ -568,7 +568,7 @@ export function hireApplication(clientId, appId, medio) {
     const req = request(a.requestId);
     if (!['abierta', 'con_postulaciones'].includes(req.estado)) throw new AppError('Esta changa ya tiene un prestador asignado.');
     const o = createOrder({
-      origen: 'postulacion', req, app: a, clienteId, providerId: a.providerId, rubroId: req.rubroId, descripcion: req.descripcion,
+      origen: 'postulacion', req, app: a, clienteId: clientId, providerId: a.providerId, rubroId: req.rubroId, descripcion: req.descripcion,
       direccion: req.direccion, fecha: a.fecha, franja: a.franja, asap: req.cuando.tipo === 'asap', precio: a.precio, medio: medio || req.medioPrevisto,
     });
     transition('request', req, 'asignar');
@@ -580,7 +580,7 @@ export function hireApplication(clientId, appId, medio) {
 }
 
 export function hireDirect(clientId, providerId, data) {
-  return mutate(() => createOrder({ origen: 'directa', clienteId, providerId, ...data }));
+  return mutate(() => createOrder({ origen: 'directa', clienteId: clientId, providerId, ...data }));
 }
 
 export function ordersOfClient(uid) { return db.orders.filter((o) => o.clienteId === uid).sort((a, b) => b.creadoEn - a.creadoEn); }
