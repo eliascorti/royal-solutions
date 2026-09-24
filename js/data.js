@@ -1,6 +1,6 @@
 // Datos de referencia: rubros, barrios, documentos por nivel de riesgo.
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 export const APP_VERSION = 'v0.9.2';
 
 // Riesgo del rubro → documentación exigida y comisión.
@@ -55,29 +55,30 @@ export function docsRequeridos(riesgo) {
   return base;
 }
 
-// Barrios de Córdoba capital. x/y en km respecto del Centro (norte = y positivo).
+// Barrios de Santa Fe capital. x/y en km respecto del Centro (norte = y positivo).
+// La ciudad es alargada norte-sur, entre el río Salado (oeste) y la laguna Setúbal (este).
 export const BARRIOS = [
-  { id: 'centro', nombre: 'Centro', x: 0, y: 0, poly: '132,192 172,188 176,226 134,230' },
-  { id: 'nueva-cordoba', nombre: 'Nueva Córdoba', x: 0.2, y: -1.6, poly: '140,236 180,232 186,282 138,286' },
-  { id: 'guemes', nombre: 'Güemes', x: -1.1, y: -1.3, poly: '96,236 132,236 132,272 98,270' },
-  { id: 'alberdi', nombre: 'Alberdi', x: -2.2, y: 0.4, poly: '56,180 126,178 126,224 60,226' },
-  { id: 'alta-cordoba', nombre: 'Alta Córdoba', x: 0.6, y: 2.4, poly: '136,106 204,102 206,164 140,168' },
-  { id: 'general-paz', nombre: 'General Paz', x: 2.1, y: 0.6, poly: '184,172 246,166 250,216 186,222' },
-  { id: 'san-vicente', nombre: 'San Vicente', x: 3.6, y: -1.0, poly: '228,226 296,220 300,268 232,272' },
-  { id: 'cerro', nombre: 'Cerro de las Rosas', x: -2.0, y: 5.2, poly: '48,22 136,18 138,88 54,92' },
-  { id: 'jardin', nombre: 'Barrio Jardín', x: 1.0, y: -4.8, poly: '150,322 214,318 218,388 154,390' },
+  { id: 'centro', nombre: 'Centro', x: 0, y: 0, poly: '136,278 186,276 188,326 134,328' },
+  { id: 'sur', nombre: 'Barrio Sur', x: 0.1, y: -1.4, poly: '138,336 190,334 194,384 140,386' },
+  { id: 'candioti', nombre: 'Candioti', x: 1.3, y: 0.9, poly: '192,240 238,236 242,286 194,290' },
+  { id: 'mariano-comas', nombre: 'Mariano Comas', x: -0.2, y: 1.7, poly: '130,206 182,204 186,256 132,258' },
+  { id: 'barranquitas', nombre: 'Barranquitas', x: -1.8, y: 1.0, poly: '62,232 122,230 124,286 64,288' },
+  { id: 'constituyentes', nombre: 'Constituyentes', x: 0.3, y: 3.1, poly: '146,146 196,144 198,196 148,198' },
+  { id: 'siete-jefes', nombre: 'Siete Jefes', x: 1.7, y: 2.9, poly: '204,152 250,148 252,206 206,208' },
+  { id: 'los-hornos', nombre: 'Los Hornos', x: -1.1, y: 4.4, poly: '86,88 144,86 146,140 88,142' },
+  { id: 'guadalupe', nombre: 'Guadalupe', x: 2.2, y: 5.2, poly: '214,52 266,48 270,116 218,118' },
 ];
 
 export const CALLES = {
-  'centro': ['27 de Abril', 'Av. Colón', 'Deán Funes', 'San Jerónimo', 'Rivera Indarte'],
-  'nueva-cordoba': ['Obispo Trejo', 'Independencia', 'Buenos Aires', 'Chacabuco', 'Rondeau'],
-  'guemes': ['Fructuoso Rivera', 'Belgrano', 'Laprida', 'Pueyrredón', 'Achával Rodríguez'],
-  'alberdi': ['Duarte Quirós', 'Santa Rosa', 'Av. Colón', 'Caseros', 'Mariano Castex'],
-  'alta-cordoba': ['Av. Juan B. Justo', 'Jerónimo Luis de Cabrera', 'Fragueiro', 'Rodríguez Peña', 'Sarmiento'],
-  'general-paz': ['25 de Mayo', 'Rosario de Santa Fe', 'Ovidio Lagos', 'Av. Patria', 'Lima'],
-  'san-vicente': ['Agustín Garzón', 'Sargento Cabral', 'Entre Ríos', 'San Jerónimo', 'Diego de Torres'],
-  'cerro': ['Av. Rafael Núñez', 'Luis de Tejeda', 'José Roque Funes', 'Gregorio Gavier', 'Martín Cartechini'],
-  'jardin': ['Av. Richieri', 'Ricardo Rojas', 'Arturo M. Bas', 'Av. Cruz Roja', 'Valparaíso'],
+  'centro': ['San Martín', '25 de Mayo', 'Rivadavia', 'San Jerónimo', '1° de Mayo'],
+  'sur': ['San Lorenzo', 'Juan de Garay', 'Mendoza', 'Tucumán', '3 de Febrero'],
+  'candioti': ['Bv. Gálvez', 'Marcial Candioti', 'Sarmiento', 'Balcarce', 'Rivadavia'],
+  'mariano-comas': ['Castelli', 'Pedro Vittori', 'Iturraspe', 'Gdor. Freyre', 'Mitre'],
+  'barranquitas': ['Av. López y Planes', 'Ituzaingó', 'Dr. Zavalla', 'Estrada', 'Pje. Irigoyen'],
+  'constituyentes': ['Av. Aristóbulo del Valle', 'Padre Genesio', 'Lavalle', 'Pje. Koch', 'Güemes'],
+  'siete-jefes': ['Av. General Paz', 'Javier de la Rosa', 'Alberdi', 'Castellanos', 'Belgrano'],
+  'los-hornos': ['Av. Blas Parera', 'Gorostiaga', 'Llerena', 'French', 'E. Zeballos'],
+  'guadalupe': ['Av. Galicia', 'Javier de la Rosa', 'Almonacid', 'Laprida', 'Regimiento 12 de Infantería'],
 };
 
 export const FRANJAS = { manana: 'Mañana 8–12', tarde: 'Tarde 13–17', noche: 'Noche 18–21' };

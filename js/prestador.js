@@ -472,7 +472,7 @@ function uploadSheet(ctx, tipo, rubroId) {
       <p class="small muted">${isSelfie ? 'Sacate una foto sosteniendo tu DNI al lado de la cara.' : isMat ? 'Foto de la matrícula completa, con el número y la fecha de vencimiento legibles.' : isAnt ? 'Certificado del Registro Nacional de Reincidencia, emitido hace menos de 6 meses.' : 'Foto nítida, sin reflejos, con las 4 esquinas visibles.'} JPG, PNG o PDF hasta 5 MB.</p>
       <div id="pv" class="doc-thumb" style="width:100%;height:auto;min-height:120px;display:flex;align-items:center;justify-content:center;color:var(--text-3)">${icon('image')}</div>
       <div class="row"><label class="btn grow">${icon(isSelfie ? 'camera' : 'upload')}${isSelfie ? 'Tomar selfie' : 'Subir archivo'}<input type="file" id="fi" class="sr-only" accept="image/*,application/pdf" ${isSelfie ? 'capture="user"' : ''}></label><button type="button" class="btn grow" data-sim>${icon('camera')}Simular captura</button></div>
-      ${isMat ? `<div class="field"><label for="nu">N° de matrícula</label><input class="input mono" id="nu" placeholder="Mat. ECOGAS 4417"></div><div class="field"><label for="en">Entidad emisora</label><input class="input" id="en" value="${esc({ gas: 'Distribuidora de Gas del Centro', electricidad: 'ERSeP Córdoba', aires: 'Cámara de Aire Acondicionado y Refrigeración' }[rubroId] || '')}"></div><div class="field"><label for="ve">Vencimiento</label><input class="input mono" type="date" id="ve" min="${S.isoDate(S.now() + 86400000)}" value="${S.isoDate(S.now() + 365 * 86400000)}"></div>` : ''}
+      ${isMat ? `<div class="field"><label for="nu">N° de matrícula</label><input class="input mono" id="nu" placeholder="Mat. Litoral Gas 4417"></div><div class="field"><label for="en">Entidad emisora</label><input class="input" id="en" value="${esc({ gas: 'Litoral Gas S.A.', electricidad: 'Empresa Provincial de la Energía (EPE)', aires: 'Cámara de Aire Acondicionado y Refrigeración' }[rubroId] || '')}"></div><div class="field"><label for="ve">Vencimiento</label><input class="input mono" type="date" id="ve" min="${S.isoDate(S.now() + 86400000)}" value="${S.isoDate(S.now() + 365 * 86400000)}"></div>` : ''}
       ${isAnt ? '<div class="field"><label for="nu">N° de certificado</label><input class="input mono" id="nu" placeholder="RNR-482193"></div>' : ''}
     </div>`,
     footer: '<button class="btn primary block" data-ok>Guardar documento</button>',
@@ -489,7 +489,7 @@ function uploadSheet(ctx, tipo, rubroId) {
   s.el.querySelector('[data-sim]').onclick = () => {
     file = { dataUrl: null, mime: 'image/svg+xml', kb: 180, simulado: true };
     const num = s.el.querySelector('#nu');
-    if (num && !num.value) num.value = isMat ? `${{ gas: 'Mat. ECOGAS', electricidad: 'Mat. ERSeP', aires: 'Mat. CAyR' }[rubroId] || 'Mat.'} ${Math.floor(1000 + Math.random() * 9000)}` : `RNR-${Math.floor(100000 + Math.random() * 900000)}`;
+    if (num && !num.value) num.value = isMat ? `${{ gas: 'Mat. Litoral Gas', electricidad: 'Reg. EPE', aires: 'Mat. CAyR' }[rubroId] || 'Mat.'} ${Math.floor(1000 + Math.random() * 9000)}` : `RNR-${Math.floor(100000 + Math.random() * 900000)}`;
     const fake = { tipo, numero: num?.value || '', vence: s.el.querySelector('#ve') ? new Date(s.el.querySelector('#ve').value).getTime() : null, entidad: s.el.querySelector('#en')?.value || '', estado: 'cargado' };
     pv.innerHTML = docImage(fake, ctx.user, rubroId ? S.rubro(rubroId).nombre : '');
     pv.style.background = 'transparent';

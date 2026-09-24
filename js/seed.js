@@ -36,7 +36,7 @@ export function buildSeed(NOW) {
   };
   const mkUser = ({ nombre, apellido, email, barrio, calle, roles = ['cliente'], dni, tel, creado, estado = 'activo' }) => {
     const u = {
-      id: id('USR'), email, pass: 'demo1234', nombre, apellido, telefono: tel || `351 ${Math.floor(between(400, 799))}-${Math.floor(between(1000, 9999))}`,
+      id: id('USR'), email, pass: 'demo1234', nombre, apellido, telefono: tel || `342 ${Math.floor(between(400, 799))}-${Math.floor(between(1000, 9999))}`,
       dni: dni || `${Math.floor(between(24, 44))}.${Math.floor(between(100, 999))}.${Math.floor(between(100, 999))}`, roles, estado,
       color: pick(COLORS), direcciones: [mkAddress(barrio, calle)], tarjetas: [], favoritos: [],
       prefs: { postulaciones: true, estados: true, mensajes: true, promos: false }, creadoEn: creado || NOW - between(20, 110) * D,
@@ -50,19 +50,19 @@ export function buildSeed(NOW) {
   mkUser({ nombre: 'Mesa de', apellido: 'Operaciones', email: 'admin@royal.com', barrio: 'centro', roles: ['admin'], dni: '30.000.001', creado: NOW - 200 * D });
 
   /* ── clientes ── */
-  const lucia = mkUser({ nombre: 'Lucía', apellido: 'Ferreyra', email: 'lucia@demo.com', barrio: 'nueva-cordoba', calle: 'Obispo Trejo 1240, 4° B', dni: '38.412.775', tel: '351 612-4480', creado: NOW - 64 * D });
+  const lucia = mkUser({ nombre: 'Lucía', apellido: 'Ferreyra', email: 'lucia@demo.com', barrio: 'candioti', calle: 'Bv. Gálvez 1450, 4° B', dni: '38.412.775', tel: '342 612-4480', creado: NOW - 64 * D });
   lucia.tarjetas.push({ id: 'TRJ-1001', marca: 'Visa', last4: '4821', venc: '08/29', token: 'tok_x81ka02mf9qe' });
-  lucia.direcciones.push({ ...mkAddress('guemes', 'Fructuoso Rivera 530'), id: 'd2', alias: 'Casa de mamá' });
+  lucia.direcciones.push({ ...mkAddress('sur', 'San Lorenzo 2130'), id: 'd2', alias: 'Casa de mamá' });
   const clientesDef = [
-    ['Martín', 'Aguirre', 'general-paz'], ['Carolina', 'Sosa', 'alta-cordoba'], ['Federico', 'Paz', 'cerro'], ['Valentina', 'Molina', 'nueva-cordoba'],
-    ['Gustavo', 'Rinaldi', 'alberdi'], ['Sofía', 'Quiroga', 'jardin'], ['Nicolás', 'Heredia', 'san-vicente'], ['Florencia', 'Bazán', 'guemes'],
-    ['Diego', 'Villarreal', 'centro'], ['Camila', 'Ludueña', 'general-paz'], ['Pablo', 'Oviedo', 'cerro'], ['Mariela', 'Castro', 'alta-cordoba'],
-    ['Joaquín', 'Funes', 'nueva-cordoba'], ['Agustina', 'Olmedo', 'jardin'],
+    ['Martín', 'Aguirre', 'siete-jefes'], ['Carolina', 'Sosa', 'mariano-comas'], ['Federico', 'Paz', 'guadalupe'], ['Valentina', 'Molina', 'candioti'],
+    ['Gustavo', 'Rinaldi', 'barranquitas'], ['Sofía', 'Quiroga', 'los-hornos'], ['Nicolás', 'Heredia', 'constituyentes'], ['Florencia', 'Bazán', 'sur'],
+    ['Diego', 'Villarreal', 'centro'], ['Camila', 'Ludueña', 'siete-jefes'], ['Pablo', 'Oviedo', 'guadalupe'], ['Mariela', 'Castro', 'mariano-comas'],
+    ['Joaquín', 'Funes', 'candioti'], ['Agustina', 'Olmedo', 'los-hornos'],
   ];
   const clientes = [lucia, ...clientesDef.map(([n, a, b]) => mkUser({ nombre: n, apellido: a, email: `${slug(n)}.${slug(a)}@demo.com`, barrio: b }))];
 
   /* ── prestadores ── */
-  const MATRICULA = { gas: ['Mat. ECOGAS', 'Distribuidora de Gas del Centro'], electricidad: ['Mat. ERSeP', 'Ente Regulador de Servicios Públicos'], aires: ['Mat. CAyR', 'Cámara de Aire Acondicionado y Refrigeración'] };
+  const MATRICULA = { gas: ['Mat. Litoral Gas', 'Litoral Gas S.A.'], electricidad: ['Reg. EPE', 'Empresa Provincial de la Energía'], aires: ['Mat. CAyR', 'Cámara de Aire Acondicionado y Refrigeración'] };
   const DESC = {
     plomeria: 'Plomería general y destapaciones. Trabajo con termofusión y dejo todo probado antes de irme.',
     electricidad: 'Electricista matriculado. Tableros, disyuntores y cableado. Presupuesto claro antes de empezar.',
@@ -77,31 +77,31 @@ export function buildSeed(NOW) {
   };
   // [nombre, apellido, email, rubros, barrio, estado, opciones]
   const provDef = [
-    ['Ramiro', 'Bustos', 'ramiro@demo.com', ['gas', 'plomeria'], 'guemes', 'aprobado', { deuda: 2850, resp: 6, disponible: true, dni: '31.556.208', tel: '351 598-2217' }],
-    ['Walter', 'Ceballos', null, ['electricidad'], 'alberdi', 'aprobado', { deuda: 4300, matVence: 18 * D, resp: 14 }],
-    ['Hugo', 'Maldonado', null, ['plomeria'], 'nueva-cordoba', 'aprobado', { deuda: 9800, resp: 9 }],
-    ['Daniel', 'Toledo', null, ['plomeria', 'albanileria'], 'general-paz', 'aprobado', { deuda: 16200, resp: 22 }],
-    ['Marcela', 'Ríos', null, ['limpieza'], 'alta-cordoba', 'aprobado', { deuda: 900, resp: 11 }],
-    ['Sergio', 'Arce', null, ['electricidad'], 'san-vicente', 'aprobado', { deuda: 1500, resp: 18 }],
-    ['Claudio', 'Pereyra', null, ['albanileria'], 'jardin', 'aprobado', { deuda: 3100, resp: 35 }],
-    ['Andrea', 'Gómez', null, ['limpieza'], 'nueva-cordoba', 'aprobado', { deuda: 0, resp: 8 }],
-    ['Luis', 'Barrionuevo', null, ['fletes'], 'alberdi', 'aprobado', { deuda: 12400, resp: 16 }],
+    ['Ramiro', 'Bustos', 'ramiro@demo.com', ['gas', 'plomeria'], 'sur', 'aprobado', { deuda: 2850, resp: 6, disponible: true, dni: '31.556.208', tel: '342 598-2217' }],
+    ['Walter', 'Ceballos', null, ['electricidad'], 'barranquitas', 'aprobado', { deuda: 4300, matVence: 18 * D, resp: 14 }],
+    ['Hugo', 'Maldonado', null, ['plomeria'], 'candioti', 'aprobado', { deuda: 9800, resp: 9 }],
+    ['Daniel', 'Toledo', null, ['plomeria', 'albanileria'], 'siete-jefes', 'aprobado', { deuda: 16200, resp: 22 }],
+    ['Marcela', 'Ríos', null, ['limpieza'], 'mariano-comas', 'aprobado', { deuda: 900, resp: 11 }],
+    ['Sergio', 'Arce', null, ['electricidad'], 'constituyentes', 'aprobado', { deuda: 1500, resp: 18 }],
+    ['Claudio', 'Pereyra', null, ['albanileria'], 'los-hornos', 'aprobado', { deuda: 3100, resp: 35 }],
+    ['Andrea', 'Gómez', null, ['limpieza'], 'candioti', 'aprobado', { deuda: 0, resp: 8 }],
+    ['Luis', 'Barrionuevo', null, ['fletes'], 'barranquitas', 'aprobado', { deuda: 12400, resp: 16 }],
     ['Javier', 'Moyano', null, ['cerrajeria'], 'centro', 'aprobado', { deuda: 600, resp: 5 }],
-    ['Rubén', 'Acosta', null, ['aires', 'electricidad'], 'cerro', 'aprobado', { deuda: 5200, resp: 27 }],
-    ['Gabriela', 'Nieto', null, ['jardineria'], 'cerro', 'aprobado', { deuda: 0, resp: 19 }],
-    ['Oscar', 'Vélez', null, ['pintura'], 'san-vicente', 'aprobado', { deuda: 2400, resp: 31 }],
-    ['Matías', 'Cabrera', null, ['plomeria'], 'alta-cordoba', 'aprobado', { deuda: 0, resp: 12, nuevo: true }],
-    ['Silvina', 'Luna', null, ['limpieza'], 'guemes', 'aprobado', { deuda: 1200, resp: 10 }],
-    ['Ezequiel', 'Farías', null, ['gas'], 'general-paz', 'aprobado', { deuda: 7400, resp: 20 }],
-    ['Leandro', 'Godoy', null, ['fletes'], 'jardin', 'aprobado', { deuda: 0, resp: 15 }],
-    ['Norma', 'Peralta', null, ['pintura', 'limpieza'], 'alberdi', 'aprobado', { deuda: 800, resp: 24 }],
+    ['Rubén', 'Acosta', null, ['aires', 'electricidad'], 'guadalupe', 'aprobado', { deuda: 5200, resp: 27 }],
+    ['Gabriela', 'Nieto', null, ['jardineria'], 'guadalupe', 'aprobado', { deuda: 0, resp: 19 }],
+    ['Oscar', 'Vélez', null, ['pintura'], 'constituyentes', 'aprobado', { deuda: 2400, resp: 31 }],
+    ['Matías', 'Cabrera', null, ['plomeria'], 'mariano-comas', 'aprobado', { deuda: 0, resp: 12, nuevo: true }],
+    ['Silvina', 'Luna', null, ['limpieza'], 'sur', 'aprobado', { deuda: 1200, resp: 10 }],
+    ['Ezequiel', 'Farías', null, ['gas'], 'siete-jefes', 'aprobado', { deuda: 7400, resp: 20 }],
+    ['Leandro', 'Godoy', null, ['fletes'], 'los-hornos', 'aprobado', { deuda: 0, resp: 15 }],
+    ['Norma', 'Peralta', null, ['pintura', 'limpieza'], 'barranquitas', 'aprobado', { deuda: 800, resp: 24 }],
     ['Pablo', 'Bravo', null, ['aires'], 'centro', 'aprobado', { deuda: 3600, resp: 13 }],
-    ['Franco', 'Ibarra', null, ['electricidad'], 'nueva-cordoba', 'pendiente_revision', { hace: 5 * H }],
-    ['Mauricio', 'Soria', null, ['gas'], 'alta-cordoba', 'pendiente_revision', { hace: 26 * H }],
-    ['Rocío', 'Medina', null, ['cerrajeria'], 'san-vicente', 'pendiente_revision', { hace: 50 * H }],
-    ['Alejandro', 'Paredes', null, ['electricidad'], 'general-paz', 'observado', { hace: 3 * D }],
-    ['Cristian', 'Ledesma', null, ['albanileria'], 'alberdi', 'rechazado', { hace: 9 * D }],
-    ['Julio', 'Carrizo', null, ['plomeria'], 'guemes', 'suspendido', { deuda: 0, resp: 40 }],
+    ['Franco', 'Ibarra', null, ['electricidad'], 'candioti', 'pendiente_revision', { hace: 5 * H }],
+    ['Mauricio', 'Soria', null, ['gas'], 'mariano-comas', 'pendiente_revision', { hace: 26 * H }],
+    ['Rocío', 'Medina', null, ['cerrajeria'], 'constituyentes', 'pendiente_revision', { hace: 50 * H }],
+    ['Alejandro', 'Paredes', null, ['electricidad'], 'siete-jefes', 'observado', { hace: 3 * D }],
+    ['Cristian', 'Ledesma', null, ['albanileria'], 'barranquitas', 'rechazado', { hace: 9 * D }],
+    ['Julio', 'Carrizo', null, ['plomeria'], 'sur', 'suspendido', { deuda: 0, resp: 40 }],
   ];
 
   const provs = provDef.map(([nombre, apellido, email, rubros, bid, estado, o]) => {
@@ -187,7 +187,7 @@ export function buildSeed(NOW) {
     pintura: ['Pintar living y comedor', 'Pintar rejas del frente', 'Impermeabilizar el techo'],
     jardineria: ['Cortar el pasto y bordes', 'Poda del paraíso del patio', 'Limpieza general del patio'],
     limpieza: ['Limpieza general 4 h', 'Limpieza post mudanza', 'Limpieza de vidrios'],
-    fletes: ['Llevar una heladera a Villa Allende', 'Mudanza de un monoambiente', 'Retirar escombros'],
+    fletes: ['Llevar una heladera a Santo Tomé', 'Mudanza de un monoambiente', 'Retirar escombros'],
     cerrajeria: ['Cambiar la cerradura de la puerta principal', 'Me quedé afuera', 'Arreglar el portón'],
     aires: ['Instalar split de 3000 frigorías', 'El aire no enfría', 'Limpieza de dos splits'],
   };
@@ -336,7 +336,7 @@ export function buildSeed(NOW) {
     [otrosClientes[7], 'gas', 'Olor a gas cerca del calefactor del living', 12 * MIN, true, null],
     [otrosClientes[3], 'electricidad', 'Salta la térmica cuando enchufo el lavarropas', 3 * H, false, 45000],
     [otrosClientes[11], 'limpieza', 'Limpieza general de un 2 ambientes, 4 horas', 7 * H, false, 32000],
-    [otrosClientes[9], 'fletes', 'Llevar un sillón y una mesa a Alta Córdoba', 20 * H, false, 40000],
+    [otrosClientes[9], 'fletes', 'Llevar un sillón y una mesa a Guadalupe', 20 * H, false, 40000],
     [otrosClientes[12], 'cerrajeria', 'Me quedé afuera, la llave quedó puesta del lado de adentro', 8 * MIN, true, null],
     [otrosClientes[4], 'plomeria', 'Se tapó la pileta del lavadero', 5 * H, false, null],
   ];

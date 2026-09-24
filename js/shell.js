@@ -252,7 +252,7 @@ function registerView(cfg) {
     render: () => `<form id="reg" class="stack" novalidate>
       <div class="row gap-3"><div class="grow">${field('nombre', 'Nombre', 'text', 'autocomplete="given-name"')}</div><div class="grow">${field('apellido', 'Apellido', 'text', 'autocomplete="family-name"')}</div></div>
       ${field('email', 'Email', 'email', 'autocomplete="email"')}
-      ${field('telefono', 'Teléfono', 'tel', 'autocomplete="tel" placeholder="351 555-1234"')}
+      ${field('telefono', 'Teléfono', 'tel', 'autocomplete="tel" placeholder="342 555-1234"')}
       ${field('dni', 'DNI', 'text', 'inputmode="numeric" placeholder="38.412.775"')}
       <div class="field"><label for="barrio">Barrio</label><select class="select" id="barrio">${BARRIOS.map((b) => `<option value="${b.id}">${esc(b.nombre)}</option>`).join('')}</select></div>
       ${field('pass', 'Contraseña', 'password', 'autocomplete="new-password"')}
@@ -394,20 +394,17 @@ function chatView(app) {
     return t && t.userId !== ctx.user.id && t.until > S.now() ? `${esc(counterpart(ctx, o).nombre)} está escribiendo <i></i><i></i><i></i>` : '';
   };
   return {
-    back: true, cls: 'flush', skeleton: false,
+    back: true, cls: 'chatview', skeleton: false,
     title: (ctx) => { const o = S.order(ctx.params.id); return o ? `${counterpart(ctx, o).nombre} · ${o.id}` : 'Chat'; },
     render(ctx) {
       const o = S.order(ctx.params.id);
       if (!o) return empty('message', 'Conversación no encontrada', '');
-      return `<div class="chat-wrap" style="height:calc(100dvh - 57px)"><div class="chat-scroll" id="cs"><div class="chat" id="bubbles">${bubbles(ctx, o)}</div><div class="typing" id="typing">${typingHtml(ctx, o)}</div></div>
+      return `<div class="chat-wrap"><div class="chat-scroll" id="cs"><div class="chat" id="bubbles">${bubbles(ctx, o)}</div><div class="typing" id="typing">${typingHtml(ctx, o)}</div></div>
         <form class="chat-input" id="cf"><label class="sr-only" for="msg">Mensaje</label><input class="input" id="msg" autocomplete="off" placeholder="Escribí un mensaje"><button class="btn primary icon" type="submit" aria-label="Enviar">${icon('send')}</button></form></div>`;
     },
     mount(el, ctx) {
       const o = S.order(ctx.params.id);
       if (!o) return;
-      const wrap = el.querySelector('.chat-wrap');
-      const fit = () => { const scr = document.getElementById('screen'); wrap.style.height = scr.clientHeight + 'px'; };
-      fit();
       const cs = el.querySelector('#cs');
       cs.scrollTop = cs.scrollHeight;
       S.markThreadRead(o.id, ctx.user.id);

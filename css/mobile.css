@@ -142,3 +142,12 @@ body.has-tabbar .cta-bar { bottom: 0; }
 .chat-input .input { flex: 1; }
 
 .checkout { background: #F3F4F6; color: #111; min-height: 100%; }
+
+/* chat: ocupa exactamente el alto de la pantalla, con el campo de texto siempre visible abajo */
+.screen > .view.chatview { padding: 0; height: 100%; animation: none; }
+.chatview .chat-wrap { height: 100%; }
+
+/* Dentro de la vista demo (iframe con carcasa de iPhone) se reserva el área del indicador de inicio */
+body.embedded .tabbar { padding-bottom: 20px; }
+body.embedded .cta-bar, body.embedded .chat-input, body.embedded .onb .bottom, body.embedded .sheet-f { padding-bottom: 26px; }
+body.embedded .toasts { bottom: 104px; }

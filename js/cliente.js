@@ -264,7 +264,7 @@ const pub3 = {
     return `${stepper(3)}<div class="stack">
       <h1>Presupuesto y pago</h1>
       <div class="field"><label for="pres">Presupuesto de referencia (opcional)</label><div class="input-group"><span class="prefix">$</span><input class="input" id="pres" inputmode="numeric" placeholder="30.000" value="${draft.presupuesto ? Number(draft.presupuesto).toLocaleString('es-AR') : ''}"></div>
-      <span class="hint">Referencia en Córdoba para ${esc(r.nombre.toLowerCase())}: <span class="mono">${money(r.precio[0])} – ${money(r.precio[1])}</span>. Los prestadores te mandan su precio.</span></div>
+      <span class="hint">Referencia en Santa Fe para ${esc(r.nombre.toLowerCase())}: <span class="mono">${money(r.precio[0])} – ${money(r.precio[1])}</span>. Los prestadores te mandan su precio.</span></div>
       <div class="field"><span class="label">¿Cómo pensás pagar?</span><div class="stack" id="med" style="gap:8px">${['efectivo', 'transferencia', 'mercadopago'].map((m) => `<button type="button" class="opt ${draft.medio === m ? 'on' : ''}" data-v="${m}">${icon(MEDIOS[m].icono)}<div class="grow"><div class="strong small">${MEDIOS[m].label}</div><div class="xs muted">${{ efectivo: 'Le pagás en mano al terminar. Confirmás el monto en la app.', transferencia: 'A la cuenta de Royal. Incluye Garantía Royal.', mercadopago: 'Pago online al terminar. Incluye Garantía Royal.' }[m]}</div></div></button>`).join('')}</div></div>
       <div class="banner info">${icon('info')}<div>Vos pagás el precio acordado. La comisión de Royal (${r.comision}%) la paga el prestador.</div></div>
     </div>`;
@@ -923,7 +923,7 @@ const perfilDirecciones = {
   },
   actions: {
     add(b, e, ctx) {
-      const s = sheet({ title: 'Nueva dirección', body: `<div class="stack"><div class="field"><label for="al">Nombre</label><input class="input" id="al" placeholder="Trabajo"></div><div class="field"><label for="ca">Calle y número</label><input class="input" id="ca" placeholder="Av. Colón 1850"></div><div class="field"><label for="ba">Barrio</label><select class="select" id="ba">${BARRIOS.map((x) => `<option value="${x.id}">${esc(x.nombre)}</option>`).join('')}</select></div></div>`, footer: '<button class="btn primary block" data-ok>Guardar</button>' });
+      const s = sheet({ title: 'Nueva dirección', body: `<div class="stack"><div class="field"><label for="al">Nombre</label><input class="input" id="al" placeholder="Trabajo"></div><div class="field"><label for="ca">Calle y número</label><input class="input" id="ca" placeholder="San Martín 2450"></div><div class="field"><label for="ba">Barrio</label><select class="select" id="ba">${BARRIOS.map((x) => `<option value="${x.id}">${esc(x.nombre)}</option>`).join('')}</select></div></div>`, footer: '<button class="btn primary block" data-ok>Guardar</button>' });
       const ok = s.el.querySelector('[data-ok]');
       ok.onclick = () => run(ok, async () => {
         const alias = s.el.querySelector('#al').value.trim(), calle = s.el.querySelector('#ca').value.trim();
@@ -961,7 +961,7 @@ const fig3 = `<div class="row wrap gap-1"><span class="badge">${icon('cash')}Efe
 
 startMobileApp({
   app: 'cliente', theme: 'light', home: '/inicio',
-  tagline: 'Oficios y changas en Córdoba, con prestadores verificados cerca tuyo.',
+  tagline: 'Oficios y changas en Santa Fe, con prestadores verificados cerca tuyo.',
   quickLogins: [{ label: 'Entrar como Lucía — cliente', email: 'lucia@demo.com' }, { label: 'Entrar como Martín — cliente', email: 'martin.aguirre@demo.com' }],
   onboarding: [
     { title: 'Publicá lo que necesitás', text: 'Contalo en una línea. Los prestadores cerca tuyo te mandan su precio en minutos.', figure: fig1 },

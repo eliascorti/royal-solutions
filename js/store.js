@@ -220,7 +220,7 @@ export function register(data) {
     if (db.users.some((u) => u.email.toLowerCase() === email)) throw new AppError('Ya existe una cuenta con ese email.');
     if (data.dni && db.users.some((u) => u.dni === data.dni)) throw new AppError('Ya existe una cuenta con ese DNI.');
     if (data.dni && db.dniBloqueados.includes(data.dni)) throw new AppError('No podemos crear una cuenta con ese DNI.');
-    const b = barrio(data.barrio || 'nueva-cordoba');
+    const b = barrio(data.barrio || 'centro');
     const calle = `${CALLES[b.id][0]} ${Math.floor(rnd(100, 2400))}`;
     const loc = { x: b.x + rnd(-0.3, 0.3), y: b.y + rnd(-0.3, 0.3) };
     const u = {
