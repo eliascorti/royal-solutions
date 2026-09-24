@@ -322,3 +322,18 @@ button.li:hover, a.li:hover { background: var(--surface-2); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }
+
+/* progreso de estados (orden / verificación) */
+.prog { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; }
+.prog .s { display: flex; flex-direction: column; gap: 6px; font-size: 11px; line-height: 1.2; color: var(--text-3); min-width: 0; }
+.prog .s span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prog .s i { display: block; height: 4px; border-radius: 2px; background: var(--border); }
+.prog .s.done { color: var(--text-2); }
+.prog .s.done i { background: var(--accent); }
+.prog .s.cur { color: var(--text); font-weight: 600; }
+.prog .s.cur i { background: linear-gradient(90deg, var(--accent) 0 50%, var(--border) 50% 100%); background-size: 200% 100%; animation: progcur 1.6s linear infinite; }
+.prog .s.stop { color: var(--danger); font-weight: 600; }
+.prog .s.stop i { background: var(--danger); }
+.prog .s.pause { color: var(--warn); font-weight: 600; }
+.prog .s.pause i { background: var(--warn); }
+@keyframes progcur { from { background-position: 100% 0; } to { background-position: 0 0; } }

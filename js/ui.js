@@ -59,6 +59,37 @@ export function statusBadge(kind, estado, labels) {
   return `<span class="badge ${TONE[kind]?.[estado] || ''}">${esc(labels?.[kind]?.[estado] || estado)}</span>`;
 }
 
+/* Barra de progreso de estados. Las ramas (cancelada, disputa, etc.) se marcan en el paso donde se cortó el flujo. */
+const ORDER_STEPS = ['Confirmación', 'En camino', 'Trabajo', 'Pago', 'Cierre'];
+const ORDER_POS = { pendiente_confirmacion: 0, confirmada: 1, en_camino: 1, en_curso: 2, finalizada_pend_cliente: 3, finalizada: 4, calificada: 5, resuelta: 5 };
+export function orderProgress(o, labels) {
+  let pos = ORDER_POS[o.estado];
+  let branch = null;
+  if (pos == null) {
+    // cancelada / rechazada / vencida / en_disputa: ubicar el último estado "normal" alcanzado
+    const last = [...o.timeline].reverse().find((t) => ORDER_POS[t.estado] != null && t.estado !== o.estado);
+    pos = last ? ORDER_POS[last.estado] : 0;
+    branch = { label: labels?.order?.[o.estado] || o.estado, tone: o.estado === 'en_disputa' ? 'pause' : 'stop' };
+  }
+  return progressBar(ORDER_STEPS, pos, branch, o.estado === 'finalizada' && !branch ? 'Calificación' : null);
+}
+const PROV_STEPS = ['Datos', 'Documentación', 'Revisión', 'Aprobado'];
+const PROV_POS = { borrador: 1, pendiente_revision: 2, en_revision: 2, aprobado: 4 };
+export function providerProgress(p, labels) {
+  if (PROV_POS[p.estado] != null) return progressBar(PROV_STEPS, PROV_POS[p.estado], null);
+  const branch = { observado: [2, 'pause'], rechazado: [2, 'stop'], suspendido: [3, 'stop'] }[p.estado] || [0, 'stop'];
+  return progressBar(PROV_STEPS, branch[0], { label: labels?.provider?.[p.estado] || p.estado, tone: branch[1] });
+}
+function progressBar(steps, pos, branch, curLabel) {
+  return `<div class="prog" role="list">${steps.map((l, i) => {
+    let cls = i < pos ? 'done' : i === pos ? 'cur' : '';
+    let label = l;
+    if (branch && i === pos) { cls = branch.tone; label = branch.label; }
+    else if (i === pos && curLabel) label = curLabel;
+    return `<div class="s ${cls}" role="listitem" ${i === pos ? 'aria-current="step"' : ''}><i></i><span>${esc(label)}</span></div>`;
+  }).join('')}</div>`;
+}
+
 export function empty(ic, title, text, actionHtml = '') {
   return `<div class="empty">${icon(ic)}<h3>${esc(title)}</h3><p class="small">${esc(text)}</p>${actionHtml}</div>`;
 }
@@ -288,4 +319,8 @@ export function matchRoute(routes, path) {
   }
   return null;
 }
-export const go = (path) => { location.hash = '#' + path; };
+// Navegación: las apps mobile registran su propio navegador (con pila de "volver").
+let navigator_ = null;
+export const setNavigator = (fn) => { navigator_ = fn; };
+/** go(path, { replace, drop }) · replace: no deja la pantalla actual en la pila · drop: prefijos de ruta a sacar de la pila (fin de un flujo). */
+export const go = (path, opts = {}) => { if (navigator_) navigator_(path, opts); else location.hash = '#' + path; };

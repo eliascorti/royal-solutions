@@ -4,7 +4,7 @@ import { RUBROS, BARRIOS, FRANJAS, MEDIOS, DIAS, REVIEW_TAGS_CLIENTE, MOTIVOS_CA
 import { startMobileApp, threadsOf, threadListHtml, profileFooter } from './shell.js';
 import {
   icon, esc, money, moneyHtml, avatar, rating, stars, rubroIcon, statusBadge, empty, toast, sheet, confirmDialog, run,
-  fmtDate, fmtDateY, fmtRel, fmtDay, fmtTime, plural, mapSvg, galleryTile, readImage, go, qs, qsa, delay,
+  fmtDate, fmtDateY, fmtRel, fmtDay, fmtTime, plural, mapSvg, galleryTile, readImage, go, qs, qsa, delay, orderProgress,
 } from './ui.js';
 
 const L = S.ESTADOS;
@@ -182,7 +182,7 @@ const pub1 = {
   render(ctx) {
     if (!draft || ctx.query.nuevo) {
       draft = newDraft(ctx);
-      if (ctx.query.nuevo) { history.replaceState(null, '', '#/publicar/1' + (ctx.query.rubro ? `?rubro=${ctx.query.rubro}` : '')); delete ctx.query.nuevo; }
+      if (ctx.query.nuevo) { delete ctx.query.nuevo; setTimeout(() => go('/publicar/1' + (ctx.query.rubro ? `?rubro=${ctx.query.rubro}` : ''), { replace: true })); }
     }
     if (ctx.query.rubro && !draft.rubroId) draft.rubroId = ctx.query.rubro;
     const r = draft.rubroId && S.rubro(draft.rubroId);
@@ -313,8 +313,7 @@ const pubResumen = {
         const secs = Math.round((Date.now() - draft.startedAt) / 1000);
         draft = null;
         toast(sinPrestadores ? 'Publicada. Hoy hay pocos prestadores en tu zona: puede demorar.' : `Changa publicada en ${secs} s`, 'ok');
-        history.replaceState(null, '', '#/inicio');
-        go(`/changa/${req.id}`);
+        go(`/changa/${req.id}`, { drop: '/publicar' });
       });
     },
   },
@@ -543,7 +542,7 @@ const contratar = {
         const d = ctx.user.direcciones.find((x) => x.id === el.querySelector('#dr').value);
         const o = S.hireDirect(ctx.user.id, ctx.params.id, { rubroId: el.querySelector('#rb').value, descripcion: desc, direccion: d, fecha: day, franja: fr, asap: false, precio, medio });
         toast('Pedido enviado', 'ok');
-        go(`/orden/${o.id}`);
+        go(`/orden/${o.id}`, { drop: '/contratar/' });
       });
     },
   },
@@ -609,7 +608,7 @@ const orden = {
     return `<div class="stack">
       <div class="card pad stack" style="gap:6px;border-left:3px solid var(--accent)">
         <div class="row between">${statusBadge('order', o.estado, L)}${o.garantia ? `<span class="badge ok">${icon('shield')}Garantía Royal</span>` : ''}</div>
-        <h1 style="font-size:20px">${esc(head[0])}</h1><p class="small muted">${head[1]}</p>
+        <h1 style="font-size:20px">${esc(head[0])}</h1><p class="small muted">${head[1]}</p><div style="margin-top:6px">${orderProgress(o, L)}</div>
       </div>
       ${o.estado === 'en_camino' && o.tracking ? mapSvg({ me: o.direccion, mover: { x: o.tracking.x, y: o.tracking.y, label: pu.nombre[0] + pu.apellido[0] }, dest: o.direccion }) : ''}
       ${['confirmada', 'en_camino'].includes(o.estado) ? `<div class="card pad stack center"><div class="upper">Tu código de inicio</div><div class="code">${o.codigo.split('').map((c) => `<span>${c}</span>`).join('')}</div><p class="xs muted">Dictáselo a ${esc(pu.nombre)} cuando esté en tu puerta. Así confirmamos que es la persona verificada. No lo compartas antes.</p></div>` : ''}
@@ -729,12 +728,12 @@ const pago = {
     copy(b) { navigator.clipboard?.writeText(b.dataset.v).then(() => toast('Copiado', 'ok'), () => toast('Copiado', 'ok')); },
     fakeProof(b, e, ctx) { run(b, async () => { await S.net(); S.uploadTransferProof(ctx.params.id, null, { id: ctx.user.id, rol: 'cliente' }); toast('Comprobante enviado', 'ok'); }); },
     cash(b, e, ctx) {
-      run(b, async () => { await S.net(); S.confirmCash(ctx.params.id, { id: ctx.user.id, rol: 'cliente' }); toast('Pago registrado', 'ok'); go(`/calificar/${ctx.params.id}`); });
+      run(b, async () => { await S.net(); S.confirmCash(ctx.params.id, { id: ctx.user.id, rol: 'cliente' }); toast('Pago registrado', 'ok'); go(`/calificar/${ctx.params.id}`, { replace: true }); });
     },
     reject(b, e, ctx) {
       const s = sheet({ title: 'El monto no coincide', body: `<div class="stack"><p class="small muted">Tu orden pasa a revisión y Royal media con ambas partes. No pagues hasta que se resuelva.</p><div class="field"><label for="rd">¿Qué pasó?</label><textarea class="textarea" id="rd" placeholder="Ej.: acordamos $ 28.500 y me pidió $ 40.000"></textarea></div></div>`, footer: '<button class="btn danger solid block" data-ok>Enviar a revisión</button>' });
       const ok = s.el.querySelector('[data-ok]');
-      ok.onclick = () => run(ok, async () => { await S.net(); S.rejectAmount(ctx.params.id, { id: ctx.user.id, rol: 'cliente' }, s.el.querySelector('#rd').value); s.close(); toast('Enviado a revisión', 'ok'); go(`/orden/${ctx.params.id}`); });
+      ok.onclick = () => run(ok, async () => { await S.net(); S.rejectAmount(ctx.params.id, { id: ctx.user.id, rol: 'cliente' }, s.el.querySelector('#rd').value); s.close(); toast('Enviado a revisión', 'ok'); go(`/orden/${ctx.params.id}`, { drop: '/pago/' }); });
     },
   },
 };
@@ -762,7 +761,7 @@ const checkout = {
         if (pay.medio === 'tarjeta' && !ctx.user.tarjetas.length) throw new S.AppError('Agregá una tarjeta en Perfil › Medios de pago.');
         await S.net(700, 1300);
         const ok = S.payDigital(ctx.params.id, !fail, { id: ctx.user.id, rol: 'cliente' });
-        if (ok) { toast('Pago aprobado', 'ok'); history.replaceState(null, '', `#/orden/${ctx.params.id}`); go(`/calificar/${ctx.params.id}`); }
+        if (ok) { toast('Pago aprobado', 'ok'); go(`/calificar/${ctx.params.id}`, { drop: ['/pago/', '/checkout/'] }); }
         else qs('#res').innerHTML = `<div class="banner danger">${icon('alert')}<div><b>Pago rechazado.</b> La pasarela no aprobó la operación. Probá con otro medio.</div></div><button class="btn block" data-go="/pago/${ctx.params.id}">Elegir otro medio</button>`;
       });
     },
@@ -796,8 +795,7 @@ const calificar = {
         await S.net();
         S.submitReview(ctx.params.id, ctx.user.id, { estrellas: calificar._stars, tags: [...calificar._tags], comentario: qs('#cm').value });
         toast('¡Gracias! Reseña publicada', 'ok');
-        history.replaceState(null, '', '#/mis-changas');
-        go(`/orden/${ctx.params.id}`);
+        go(`/orden/${ctx.params.id}`, { drop: '/calificar/' });
       });
     },
   },
@@ -823,7 +821,7 @@ const reportar = {
       const desc = qs('#de').value.trim();
       qs('#de-err').textContent = desc.length >= 10 ? '' : 'Describí el problema (mínimo 10 caracteres).';
       if (desc.length < 10) return;
-      run(b, async () => { await S.net(); S.openDispute(ctx.params.id, { id: ctx.user.id, rol: 'cliente' }, { motivo: qs('#mo .on').dataset.v, descripcion: desc, foto: reportar._foto }); toast('Reporte enviado', 'ok'); go(`/orden/${ctx.params.id}`); });
+      run(b, async () => { await S.net(); S.openDispute(ctx.params.id, { id: ctx.user.id, rol: 'cliente' }, { motivo: qs('#mo .on').dataset.v, descripcion: desc, foto: reportar._foto }); toast('Reporte enviado', 'ok'); go(`/orden/${ctx.params.id}`, { drop: '/reportar/' }); });
     },
   },
 };
@@ -961,6 +959,13 @@ const fig3 = `<div class="row wrap gap-1"><span class="badge">${icon('cash')}Efe
 
 startMobileApp({
   app: 'cliente', theme: 'light', home: '/inicio',
+  parents: {
+    '/changa/:id': '/mis-changas', '/orden/:id': '/mis-changas', '/pago/:id': '/orden/:id', '/checkout/:id': '/pago/:id',
+    '/calificar/:id': '/orden/:id', '/reportar/:id': '/orden/:id', '/prestador/:id': '/buscar', '/contratar/:id': '/prestador/:id',
+    '/publicar/1': '/inicio', '/publicar/2': '/publicar/1', '/publicar/3': '/publicar/2', '/publicar/resumen': '/publicar/3',
+    '/perfil/datos': '/perfil', '/perfil/pagos': '/perfil', '/perfil/direcciones': '/perfil', '/perfil/notificaciones': '/perfil', '/favoritos': '/perfil',
+    '/chat/:id': '/mensajes', '/notificaciones': '/inicio', '/registro': '/login', '/recuperar': '/login', '/recuperar/:token': '/login',
+  },
   tagline: 'Oficios y changas en Santa Fe, con prestadores verificados cerca tuyo.',
   quickLogins: [{ label: 'Entrar como Lucía — cliente', email: 'lucia@demo.com' }, { label: 'Entrar como Martín — cliente', email: 'martin.aguirre@demo.com' }],
   onboarding: [

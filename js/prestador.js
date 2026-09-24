@@ -4,7 +4,7 @@ import { RUBROS, BARRIOS, FRANJAS, DIAS, DIAS_LABEL, DOC_TIPOS, RIESGO_LABEL, ME
 import { startMobileApp, threadsOf, threadListHtml, profileFooter } from './shell.js';
 import {
   icon, esc, money, moneyHtml, avatar, rating, stars, rubroIcon, statusBadge, empty, toast, sheet, confirmDialog, run,
-  fmtDate, fmtDateY, fmtRel, fmtDay, fmtTime, plural, mapSvg, readImage, docImage, go, qs, qsa,
+  fmtDate, fmtDateY, fmtRel, fmtDay, fmtTime, plural, mapSvg, readImage, docImage, go, qs, qsa, orderProgress, providerProgress,
 } from './ui.js';
 
 const L = S.ESTADOS;
@@ -205,7 +205,7 @@ const orden = {
       rechazada: ['Rechazaste la orden', ''], vencida: ['Venció sin confirmar', 'No respondiste dentro del plazo.'],
     }[o.estado] || [L.order[o.estado], ''];
     return `<div class="stack">
-      <div class="card pad stack" style="gap:6px;border-left:3px solid var(--accent)"><div class="row between">${statusBadge('order', o.estado, L)}${o.garantia ? `<span class="badge ok">${icon('shield')}Garantía Royal</span>` : ''}</div><h1 style="font-size:20px">${esc(head[0])}</h1><p class="small muted">${head[1]}</p></div>
+      <div class="card pad stack" style="gap:6px;border-left:3px solid var(--accent)"><div class="row between">${statusBadge('order', o.estado, L)}${o.garantia ? `<span class="badge ok">${icon('shield')}Garantía Royal</span>` : ''}</div><h1 style="font-size:20px">${esc(head[0])}</h1><p class="small muted">${head[1]}</p><div style="margin-top:6px">${orderProgress(o, L)}</div></div>
       ${o.estado === 'en_camino' && o.tracking ? mapSvg({ me: o.direccion, mover: { x: o.tracking.x, y: o.tracking.y, label: ctx.user.nombre[0] + ctx.user.apellido[0] }, dest: o.direccion }) : ''}
       ${o.estado === 'en_camino' ? `<div class="card pad stack"><label class="label" for="code">Código del cliente</label><input class="input code-input" id="code" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="····"><p class="xs muted">${o.intentosCodigo ? `Intentos restantes: ${3 - o.intentosCodigo}. ` : ''}El código confirma que llegaste al domicilio correcto.</p></div>` : ''}
       ${d ? `<div class="banner ${d.estado === 'resuelta' ? 'ok' : 'warn'}">${icon('scale')}<div><b>${esc(d.id)} · ${esc(L.dispute[d.estado])}</b><div class="small">${esc(d.motivo)}</div>${d.resolucion ? `<div class="small">A favor de ${esc(d.resolucion.favor)}. ${esc(d.resolucion.nota || '')}</div>` : ''}</div></div>${d.estado !== 'resuelta' && !d.evidencias.some((ev) => ev.autor === ctx.user.id) ? '<button class="btn block" data-act="evidence">Sumar mi versión</button>' : ''}` : ''}
@@ -312,7 +312,7 @@ const calificar = {
   actions: {
     send(b, e, ctx) {
       if (!calificar._s) { toast('Elegí de 1 a 5 estrellas', 'err'); return; }
-      run(b, async () => { await S.net(); S.submitReview(ctx.params.id, ctx.user.id, { estrellas: calificar._s, tags: [...calificar._t], comentario: qs('#cm').value }); toast('Calificación enviada', 'ok'); go(`/orden/${ctx.params.id}`); });
+      run(b, async () => { await S.net(); S.submitReview(ctx.params.id, ctx.user.id, { estrellas: calificar._s, tags: [...calificar._t], comentario: qs('#cm').value }); toast('Calificación enviada', 'ok'); go(`/orden/${ctx.params.id}`, { drop: '/calificar/' }); });
     },
   },
 };
@@ -547,6 +547,7 @@ const alta = {
     const cur = p.estado === 'observado' ? 1 : flow.findIndex(([k]) => k === p.estado);
     return `<div class="stack">
       <h1>Estado de tu alta</h1>
+      ${providerProgress(p, L)}
       <ul class="timeline">${flow.map(([k, l], i) => `<li class="${i === cur ? 'now' : ''}" style="${i > cur ? 'opacity:.45' : ''}"><div class="strong small">${l}${p.estado === 'observado' && i === 1 ? ' · Observado' : ''}</div><div class="t">${(p.historial.filter((h) => h.estado === k).at(-1)?.t && fmtDate(p.historial.filter((h) => h.estado === k).at(-1).t)) || ''}</div></li>`).join('')}</ul>
       ${applyBlockBanner(ctx)}
       ${p.estado === 'rechazado' ? `<div class="banner danger">${icon('ban')}<div><b>Rechazado:</b> ${esc(p.observacion?.motivo || '')}. Si creés que es un error, escribinos a soporte.</div></div>` : ''}
@@ -684,7 +685,7 @@ const alta5 = {
         await S.net();
         const r = S.submitProvider(ctx.provider.id);
         toast(r === 'bajo' ? 'Enviado. Validamos tu identidad en segundos…' : 'Enviado a revisión', 'ok');
-        go('/alta');
+        go('/alta', { drop: '/alta/' });
       });
     },
   },
@@ -702,6 +703,11 @@ const fig3 = `<div class="stack" style="gap:6px"><span class="badge ok">${icon('
 
 startMobileApp({
   app: 'prestador', theme: 'dark', home: '/trabajos', afterRegister: '/alta/1',
+  parents: {
+    '/trabajo/:id': '/trabajos', '/orden/:id': '/trabajos', '/calificar/:id': '/orden/:id', '/historial': '/agenda',
+    '/reputacion': '/perfil', '/documentos': '/perfil', '/alta': '/perfil', '/alta/1': '/perfil', '/alta/2': '/alta/1', '/alta/3': '/alta/2',
+    '/alta/4': '/alta/3', '/alta/5': '/alta/4', '/chat/:id': '/mensajes', '/notificaciones': '/trabajos', '/registro': '/login', '/recuperar': '/login', '/recuperar/:token': '/login',
+  },
   tagline: 'Conseguí changas cerca, cobrá como quieras y construí tu reputación.',
   quickLogins: [{ label: 'Entrar como Ramiro — gasista matriculado', email: 'ramiro@demo.com' }, { label: 'Entrar como Alejandro — alta observada', email: 'alejandro.paredes@demo.com' }, { label: 'Entrar como Daniel — bloqueado por deuda', email: 'daniel.toledo@demo.com' }],
   onboarding: [

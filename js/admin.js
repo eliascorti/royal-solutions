@@ -5,7 +5,7 @@ import { initDevtools } from './devtools.js';
 import { RUBROS, BARRIOS, MEDIOS, DOC_TIPOS, RIESGO_LABEL, MOTIVOS_OBSERVACION, ENCUESTAS, APP_VERSION } from './data.js';
 import {
   icon, esc, money, moneyHtml, avatar, stars, rating, statusBadge, empty, toast, sheet, confirmDialog, run, initTheme, toggleTheme,
-  fmtDate, fmtDateY, fmtTime, fmtDateTime, fmtRel, plural, lineChart, barChart, docImage, parseHash, matchRoute, go, qs, qsa,
+  fmtDate, fmtDateY, fmtTime, fmtDateTime, fmtRel, plural, lineChart, barChart, docImage, parseHash, matchRoute, go, qs, qsa, orderProgress, providerProgress,
 } from './ui.js';
 
 const L = S.ESTADOS;
@@ -60,6 +60,23 @@ const ACCION = {
   'usuario.registro': 'Nuevo registro', 'auth.login': 'Inicio de sesión', 'soporte.ayuda': 'Pedido de ayuda', 'config.actualizada': 'Configuración actualizada',
 };
 const accionLabel = (a) => ACCION[a] || a;
+/** Aviso con el cambio de estado: "Franco Ibarra · Pendiente de revisión → Aprobado". */
+function stateToast(kind, before, after, who = '') {
+  if (before === after) return;
+  toast(`${who ? who + ' · ' : ''}${L[kind][before] || before} → ${L[kind][after] || after}`, 'ok');
+}
+/** Ejecuta una acción sobre un prestador y avisa el cambio de estado resultante. */
+function provAct(b, id, fn) {
+  return run(b, async () => {
+    const before = S.provider(id).estado;
+    await S.net(120, 280);
+    fn();
+    const p = S.provider(id);
+    if (p.estado !== before) stateToast('provider', before, p.estado, S.fullName(S.user(p.userId)));
+    else toast('Listo', 'ok');
+    refresh();
+  });
+}
 
 /* ───────────── vistas ───────────── */
 const views = {};
@@ -155,7 +172,7 @@ views['/verificaciones/:id'] = {
       </div>
       <div class="stack">
         <div class="panel"><div class="ph"><div class="row">${avatar(u)}<div><h2>${esc(S.fullName(u))}</h2><div class="xs muted mono">${p.id} · DNI ${esc(u.dni)}</div></div></div>${statusBadge('provider', p.estado, L)}</div>
-          <div class="pb"><dl class="kv"><dt>Email</dt><dd>${esc(u.email)}</dd><dt>Teléfono</dt><dd class="mono">${esc(u.telefono)}</dd><dt>Rubros</dt><dd>${p.rubros.map((r) => `${esc(S.rubro(r).nombre)} <span class="xs faint">(${S.rubro(r).riesgo})</span>`).join(', ')}</dd><dt>Cobertura</dt><dd>${p.barrios.map((b) => esc(S.barrio(b).nombre)).join(', ')}</dd><dt>Nivel actual</dt><dd>${S.NIVEL_LABEL[S.verification(p).nivel]}</dd><dt>Alta</dt><dd>${fmtDateY(p.creadoEn)}</dd></dl>
+          <div class="pb">${providerProgress(p, L)}</div><div class="pb" style="border-top:1px solid var(--border)"><dl class="kv"><dt>Email</dt><dd>${esc(u.email)}</dd><dt>Teléfono</dt><dd class="mono">${esc(u.telefono)}</dd><dt>Rubros</dt><dd>${p.rubros.map((r) => `${esc(S.rubro(r).nombre)} <span class="xs faint">(${S.rubro(r).riesgo})</span>`).join(', ')}</dd><dt>Cobertura</dt><dd>${p.barrios.map((b) => esc(S.barrio(b).nombre)).join(', ')}</dd><dt>Nivel actual</dt><dd>${S.NIVEL_LABEL[S.verification(p).nivel]}</dd><dt>Alta</dt><dd>${fmtDateY(p.creadoEn)}</dd></dl>
           ${p.observacion ? `<div class="banner warn" style="margin-top:12px">${icon('alert')}<div><b>${esc(p.observacion.motivo)}</b>${p.observacion.comentario ? `<div class="small">${esc(p.observacion.comentario)}</div>` : ''}</div></div>` : ''}</div></div>
         <div class="panel"><div class="ph"><h2>Checklist</h2></div><div class="pb checklist">${CK.filter(([k]) => (k !== 'matricula' || S.maxRiesgo(p) === 'alto') && (k !== 'antecedentes' || S.maxRiesgo(p) !== 'bajo')).map(([k, l]) => `<label class="check"><input type="checkbox" data-ck="${k}" ${ck[k] ? 'checked' : ''}> <span>${l}</span></label>`).join('')}</div></div>
         <div class="row wrap">${act.join('')}</div>
@@ -166,9 +183,9 @@ views['/verificaciones/:id'] = {
   actions: {
     doc: (b) => { docSel = b.dataset.id; refresh(); },
     zoom: (b) => b.classList.toggle('zoom'),
-    prov: (b, { id }) => run(b, async () => { await S.net(); S.adminProvider(id, b.dataset.a, {}, actor()); toast({ tomar: 'Revisión iniciada', aprobar: 'Prestador aprobado. Ya puede postularse.', reactivar: 'Prestador reactivado', video: 'Video solicitado al prestador' }[b.dataset.a], 'ok'); }),
-    docok: (b) => run(b, async () => { await S.net(); S.adminDoc(docSel, 'aprobar', '', actor()); toast('Documento aprobado', 'ok'); }),
-    docno: (b) => reasonModal('Rechazar documento', MOTIVOS_OBSERVACION, (m) => { S.adminDoc(docSel, 'rechazar', m, actor()); toast('Documento rechazado', 'ok'); }),
+    prov: (b, { id }) => provAct(b, id, () => S.adminProvider(id, b.dataset.a, {}, actor())),
+    docok: (b) => run(b, async () => { const before = db().documents.find((d) => d.id === docSel).estado; await S.net(120, 280); S.adminDoc(docSel, 'aprobar', '', actor()); stateToast('document', before, 'aprobado', DOC_TIPOS[db().documents.find((d) => d.id === docSel).tipo]); refresh(); }),
+    docno: (b) => reasonModal('Rechazar documento', MOTIVOS_OBSERVACION, (m) => { const d = db().documents.find((x) => x.id === docSel); const before = d.estado; S.adminDoc(docSel, 'rechazar', m, actor()); stateToast('document', before, 'rechazado', DOC_TIPOS[d.tipo]); refresh(); }),
     observe: (b, { id }) => {
       const p = S.provider(id);
       const docs = S.docsOf(id);
@@ -177,10 +194,10 @@ views['/verificaciones/:id'] = {
         <div class="field"><label for="oc">Comentario para ${esc(S.user(p.userId).nombre)}</label><textarea class="textarea" id="oc" placeholder="Qué tiene que corregir"></textarea></div></div>`, footer: '<button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>Enviar observación</button>' });
       s.el.querySelector('[data-x]').onclick = s.close;
       const ok = s.el.querySelector('[data-ok]');
-      ok.onclick = () => run(ok, async () => { await S.net(); S.adminProvider(id, 'observar', { motivo: s.el.querySelector('#om').value, comentario: s.el.querySelector('#oc').value.trim(), docId: s.el.querySelector('#od').value || null }, actor()); s.close(); toast('Observación enviada al prestador', 'ok'); });
+      ok.onclick = () => { const vals = { motivo: s.el.querySelector('#om').value, comentario: s.el.querySelector('#oc').value.trim(), docId: s.el.querySelector('#od').value || null }; provAct(ok, id, () => { S.adminProvider(id, 'observar', vals, actor()); s.close(); }); };
     },
-    reject: (b, { id }) => reasonModal('Rechazar alta', ['El certificado registra antecedentes', 'Identidad no verificable', 'Documentación adulterada', 'DNI bloqueado'], (m) => { S.adminProvider(id, 'rechazar', { motivo: m }, actor()); toast('Alta rechazada', 'ok'); }),
-    suspend: (b, { id }) => reasonModal('Suspender prestador', ['Cancelaciones tardías reiteradas', 'Disputas perdidas', 'Denuncia de un cliente', 'Documentación vencida'], (m) => { S.adminProvider(id, 'suspender', { motivo: m }, actor()); toast('Prestador suspendido', 'ok'); }),
+    reject: (b, { id }) => reasonModal('Rechazar alta', ['El certificado registra antecedentes', 'Identidad no verificable', 'Documentación adulterada', 'DNI bloqueado'], (m) => { const before = S.provider(id).estado; S.adminProvider(id, 'rechazar', { motivo: m }, actor()); stateToast('provider', before, 'rechazado', provName(id)); refresh(); }),
+    suspend: (b, { id }) => reasonModal('Suspender prestador', ['Cancelaciones tardías reiteradas', 'Disputas perdidas', 'Denuncia de un cliente', 'Documentación vencida'], (m) => { S.adminProvider(id, 'suspender', { motivo: m }, actor()); stateToast('provider', 'aprobado', 'suspendido', provName(id)); refresh(); }),
   },
 };
 
@@ -188,7 +205,7 @@ function reasonModal(title, reasons, apply) {
   const s = sheet({ modal: true, title, body: `<div class="field"><label for="rm">Motivo</label><select class="select" id="rm">${reasons.map((r) => `<option>${esc(r)}</option>`).join('')}</select></div>`, footer: '<button class="btn" data-x>Cancelar</button><button class="btn danger solid" data-ok>Confirmar</button>' });
   s.el.querySelector('[data-x]').onclick = s.close;
   const ok = s.el.querySelector('[data-ok]');
-  ok.onclick = () => run(ok, async () => { await S.net(); apply(s.el.querySelector('#rm').value); s.close(); });
+  ok.onclick = () => run(ok, async () => { await S.net(120, 280); apply(s.el.querySelector('#rm').value); s.close(); });
 }
 
 /* Órdenes */
@@ -238,7 +255,7 @@ views['/ordenes/:id'] = {
     const d = o.disputaId && S.dispute(o.disputaId);
     return `<div class="grid2e">
       <div class="stack">
-        <div class="panel"><div class="ph"><h2>${esc(S.rubro(o.rubroId).nombre)} · ${esc(o.descripcion)}</h2>${statusBadge('order', o.estado, L)}</div><div class="pb"><dl class="kv">
+        <div class="panel"><div class="ph"><h2>${esc(S.rubro(o.rubroId).nombre)} · ${esc(o.descripcion)}</h2>${statusBadge('order', o.estado, L)}</div><div class="pb">${orderProgress(o, L)}</div><div class="pb" style="border-top:1px solid var(--border)"><dl class="kv">
           <dt>Cliente</dt><dd><a href="#/usuarios/${o.clienteId}">${esc(uName(o.clienteId))}</a></dd><dt>Prestador</dt><dd><a href="#/usuarios/${S.provider(o.providerId).userId}">${esc(provName(o.providerId))}</a></dd>
           <dt>Origen</dt><dd>${o.origen === 'directa' ? 'Contratación directa' : `Postulación · <span class="mono">${o.requestId}</span>`}</dd><dt>Dirección</dt><dd>${esc(o.direccion.calle)} · ${esc(S.barrio(o.direccion.barrio)?.nombre || '')}</dd>
           <dt>Precio acordado</dt><dd>${moneyHtml(o.precioAcordado)}</dd><dt>Monto final</dt><dd>${moneyHtml(o.montoFinal)}</dd><dt>Comisión</dt><dd>${o.comisionPct}% · ${moneyHtml(Math.round((o.montoFinal || o.precioAcordado) * o.comisionPct / 100))}</dd>
@@ -256,13 +273,13 @@ views['/ordenes/:id'] = {
       </div></div>`;
   },
   actions: {
-    acreditar: (b, { id }) => run(b, async () => { await S.net(); S.acreditarTransfer(S.paymentOf(id).id, actor()); toast('Pago acreditado', 'ok'); }),
+    acreditar: (b, { id }) => run(b, async () => { const before = S.paymentOf(id).estado; await S.net(120, 280); S.acreditarTransfer(S.paymentOf(id).id, actor()); stateToast('payment', before, 'acreditado', id); refresh(); }),
     mismatch: (b, { id }) => {
       const pay = S.paymentOf(id);
       const s = sheet({ modal: true, title: 'Monto recibido', body: `<div class="field"><label for="mr">Monto que ingresó a la cuenta</label><div class="input-group"><span class="prefix">$</span><input class="input" id="mr" inputmode="numeric" value="${pay.monto - 5000}"></div></div>`, footer: '<button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>Pasar a revisión</button>' });
       s.el.querySelector('[data-x]').onclick = s.close;
       const ok = s.el.querySelector('[data-ok]');
-      ok.onclick = () => run(ok, async () => { await S.net(); S.acreditarTransfer(pay.id, actor(), Number(s.el.querySelector('#mr').value.replace(/\D/g, ''))); s.close(); toast('Pago en revisión', 'ok'); });
+      ok.onclick = () => run(ok, async () => { await S.net(120, 280); S.acreditarTransfer(pay.id, actor(), Number(s.el.querySelector('#mr').value.replace(/\D/g, ''))); s.close(); toast('Pago en revisión', 'ok'); });
     },
   },
 };
@@ -311,11 +328,11 @@ views['/disputas/:id'] = {
     ma?.addEventListener('input', () => { const n = Number(ma.value.replace(/\D/g, '')); ma.value = n ? n.toLocaleString('es-AR') : ''; });
   },
   actions: {
-    analisis: (b, { id }) => run(b, async () => { await S.net(); S.disputeAnalysis(id, actor()); toast('Disputa en análisis', 'ok'); refresh(); }),
+    analisis: (b, { id }) => run(b, async () => { await S.net(120, 280); S.disputeAnalysis(id, actor()); stateToast('dispute', 'abierta', 'en_analisis', id); refresh(); }),
     resolve: async (b, { id }) => {
       const favor = qs('#fv .on').dataset.v;
       if (!(await confirmDialog(`Se cierra la disputa a favor de ${favor} y se notifica a ambas partes.`, { title: 'Cerrar disputa', ok: 'Cerrar disputa' }))) return;
-      run(b, async () => { await S.net(); S.resolveDispute(id, { favor, montoAjustado: Number(qs('#ma').value.replace(/\D/g, '')) || null, penalizar: qs('#pn').checked, nota: qs('#nt').value.trim() }, actor()); toast('Disputa resuelta', 'ok'); refresh(); });
+      run(b, async () => { await S.net(120, 280); const before = S.dispute(id).estado; S.resolveDispute(id, { favor, montoAjustado: Number(qs('#ma').value.replace(/\D/g, '')) || null, penalizar: qs('#pn').checked, nota: qs('#nt').value.trim() }, actor()); stateToast('dispute', before, 'resuelta', id); refresh(); });
     },
   },
 };
@@ -371,7 +388,7 @@ views['/usuarios/:id'] = {
       const a = b.dataset.a;
       const msg = { suspender: 'La cuenta no va a poder iniciar sesión. Si es prestador, deja de aparecer en búsquedas.', reactivar: 'La cuenta vuelve a estar activa.', bloquear_dni: 'Se bloquean todas las cuentas con este DNI y no se podrán crear nuevas.' }[a];
       if (!(await confirmDialog(msg, { title: { suspender: 'Suspender cuenta', reactivar: 'Reactivar cuenta', bloquear_dni: 'Bloquear por DNI' }[a], ok: 'Confirmar', danger: a !== 'reactivar' }))) return;
-      run(b, async () => { await S.net(); S.adminUser(id, a, '', actor()); toast('Listo', 'ok'); });
+      run(b, async () => { await S.net(120, 280); S.adminUser(id, a, '', actor()); toast('Listo', 'ok'); });
     },
   },
 };
@@ -399,7 +416,7 @@ views['/resenas'] = {
       const s = sheet({ modal: true, title: b.dataset.d === 'baja' ? 'Dar de baja reseña' : 'Mantener reseña', body: '<div class="field"><label for="mn">Observación (se notifica)</label><textarea class="textarea" id="mn"></textarea></div>', footer: '<button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>Confirmar</button>' });
       s.el.querySelector('[data-x]').onclick = s.close;
       const ok = s.el.querySelector('[data-ok]');
-      ok.onclick = () => run(ok, async () => { await S.net(); S.moderateReview(b.dataset.id, b.dataset.d, s.el.querySelector('#mn').value.trim(), actor()); s.close(); toast(b.dataset.d === 'baja' ? 'Reseña dada de baja. Promedio recalculado.' : 'Reseña mantenida', 'ok'); });
+      ok.onclick = () => run(ok, async () => { await S.net(120, 280); S.moderateReview(b.dataset.id, b.dataset.d, s.el.querySelector('#mn').value.trim(), actor()); s.close(); toast(b.dataset.d === 'baja' ? 'Reseña dada de baja. Promedio recalculado.' : 'Reseña mantenida', 'ok'); });
     },
   },
 };
@@ -430,7 +447,7 @@ views['/comisiones'] = {
       const s = sheet({ modal: true, title: `Registrar pago · ${provName(b.dataset.id)}`, body: `<div class="stack"><div class="field"><label for="pm">Monto</label><div class="input-group"><span class="prefix">$</span><input class="input" id="pm" inputmode="numeric" value="${deuda.toLocaleString('es-AR')}"></div></div><div class="field"><label for="pmd">Medio</label><select class="select" id="pmd"><option value="transferencia">Transferencia</option><option value="mercadopago">Mercado Pago</option><option value="efectivo">Efectivo en oficina</option></select></div></div>`, footer: '<button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>Registrar</button>' });
       s.el.querySelector('[data-x]').onclick = s.close;
       const ok = s.el.querySelector('[data-ok]');
-      ok.onclick = () => run(ok, async () => { await S.net(); S.payDebt(b.dataset.id, Number(s.el.querySelector('#pm').value.replace(/\D/g, '')), actor(), s.el.querySelector('#pmd').value); s.close(); toast('Pago registrado', 'ok'); });
+      ok.onclick = () => run(ok, async () => { await S.net(120, 280); S.payDebt(b.dataset.id, Number(s.el.querySelector('#pm').value.replace(/\D/g, '')), actor(), s.el.querySelector('#pmd').value); s.close(); toast('Pago registrado', 'ok'); });
     },
   },
 };
@@ -524,7 +541,7 @@ views['/configuracion'] = {
       run(f.querySelector('[type=submit]'), async () => {
         if (Object.values(comisiones).some((v) => !(v > 0 && v <= 15))) throw new S.AppError('Las comisiones tienen que estar entre 1% y 15%.');
         if (!barriosHabilitados.length) throw new S.AppError('Habilitá al menos un barrio.');
-        await S.net();
+        await S.net(120, 280);
         S.updateConfig({ comisiones, nivelPorRubro, barriosHabilitados, limiteDeuda: Number(qs('#lim').value), plazoConfirmacionMin: Number(qs('#pla').value), recargoUrgentePct: Number(qs('#rec').value), maxSolicitudesAbiertas: Number(qs('#max').value) }, actor());
         toast('Configuración guardada', 'ok');
         refresh();
@@ -576,58 +593,74 @@ function loginHtml() {
   </form></div>`;
 }
 
-function render(navigated = true) {
-  S.syncFromStorage();
+function logoMark() {
+  return '<span style="width:22px;height:22px;background:var(--accent);color:var(--accent-text);border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px;font-weight:600">R</span>';
+}
+
+/* El marco del panel (sidebar + topbar) se dibuja una sola vez; al navegar o al llegar
+   eventos en vivo solo se reemplaza el contenido. */
+let shellReady = false;
+function renderShell() {
+  document.body.innerHTML = `<div class="shell">
+    <aside class="side" id="side"><div class="brand"><span class="logo" data-logo style="font-weight:600;display:inline-flex;gap:8px;align-items:center">${logoMark()}Royal Ops</span><span class="xs faint mono" data-version>${APP_VERSION}</span></div>
+      <nav id="nav"></nav>
+      <div class="foot"><div class="row">${avatar(admin, 'sm')}<div class="grow"><div class="small strong">${esc(S.fullName(admin))}</div><div class="xs faint">Santa Fe capital</div></div></div></div></aside>
+    <div class="main"><header class="topbar"><button class="btn ghost icon menu-btn" id="menu" aria-label="Menú">${icon('menu')}</button><span id="backSlot"></span><h1 id="ttl"></h1>
+      <button class="btn ghost icon" id="bell" aria-label="Notificaciones" style="position:relative"></button>
+      <button class="btn ghost icon" id="theme" aria-label="Cambiar tema"></button>
+      <button class="btn ghost sm" id="logout">${icon('logout', 'sm')}Salir</button></header>
+      <main class="content" id="content"></main></div></div>`;
+  qs('#menu').onclick = () => qs('#side').classList.toggle('open');
+  qs('#theme').onclick = () => { toggleTheme('admin'); updateChrome(); };
+  qs('#logout').onclick = () => { S.logout('admin'); shellReady = false; render(); };
+  qs('#bell').onclick = openNotifications;
+  shellReady = true;
+}
+
+function render(navigated = true, force = false) {
   const uid = S.getSession('admin');
   admin = uid ? S.user(uid) : null;
   setPresenceUser(admin?.id || null);
   if (!admin) {
+    shellReady = false;
     document.body.innerHTML = loginHtml();
     const f = qs('#lf');
-    const doLogin = (email, pass, btn) => run(btn, async () => { await S.net(); S.login(email, pass, 'admin'); if (!location.hash || location.hash === '#/') location.hash = '#/dashboard'; render(); });
+    const doLogin = (email, pass, btn) => run(btn, async () => { await S.net(150, 300); S.login(email, pass, 'admin'); if (!location.hash || location.hash === '#/') location.hash = '#/dashboard'; render(); });
     f.onsubmit = (e) => { e.preventDefault(); doLogin(qs('#em').value, qs('#pw').value, f.querySelector('[type=submit]')); };
     qs('#quick').onclick = (e) => doLogin('admin@royal.com', 'demo1234', e.currentTarget);
     current = null;
     return;
   }
+  if (!shellReady) { renderShell(); navigated = true; }
   const { path, query } = parseHash();
-  const routes = Object.fromEntries(Object.entries(views));
-  const m = matchRoute(routes, path) || matchRoute(routes, '/dashboard');
-  if (path === '/' || !matchRoute(routes, path)) { history.replaceState(null, '', '#/dashboard'); }
+  const m = matchRoute(views, path);
+  if (!m) { location.replace('#/dashboard'); return; }
   const view = m.view;
-  const title = typeof view.title === 'function' ? view.title(m.params) : view.title;
-  const keepScroll = !navigated && current?.path === path ? window.scrollY : 0;
-  // no pisar filtros/inputs en foco al refrescar en vivo
-  if (!navigated && current?.path === path) {
+  if (!navigated && !force && current?.path === path) {
+    // refresco en vivo: no pisar lo que se está escribiendo ni un modal abierto
     const a = document.activeElement;
-    if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) { updateChrome(); return; }
-    if (document.querySelector('.modal')) { updateChrome(); return; }
-    if (view.live === false) { updateChrome(); return; }
+    if ((a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && qs('#content').contains(a)) || document.querySelector('.modal') || view.live === false) { updateChrome(); return; }
   }
+  const keepScroll = !navigated && current?.path === path ? window.scrollY : 0;
   current = { path, view, params: m.params };
-  const unread = S.unreadCount(null, 'admin');
-  document.body.innerHTML = `<div class="shell">
-    <aside class="side" id="side"><div class="brand"><span class="logo" data-logo style="font-weight:600;display:inline-flex;gap:8px;align-items:center"><span style="width:22px;height:22px;background:var(--accent);color:var(--accent-text);border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px;font-weight:600">R</span>Royal Ops</span><span class="xs faint mono" data-version>${APP_VERSION}</span></div>
-      <nav id="nav"></nav>
-      <div class="foot"><div class="row">${avatar(admin, 'sm')}<div class="grow"><div class="small strong">${esc(S.fullName(admin))}</div><div class="xs faint">Santa Fe capital</div></div></div></div></aside>
-    <div class="main"><header class="topbar"><button class="btn ghost icon menu-btn" id="menu" aria-label="Menú">${icon('menu')}</button>${view.back ? `<a class="btn ghost icon sm" href="#${view.back}" aria-label="Volver">${icon('left')}</a>` : ''}<h1>${esc(title)}</h1>
-      <button class="btn ghost icon" id="bell" aria-label="Notificaciones" style="position:relative">${icon('bell')}${unread ? `<span class="count" style="position:absolute;top:4px;right:2px">${unread > 9 ? '9+' : unread}</span>` : ''}</button>
-      <button class="btn ghost icon" id="theme" aria-label="Cambiar tema">${icon(document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon')}</button>
-      <button class="btn ghost sm" id="logout">${icon('logout', 'sm')}Salir</button></header>
-      <main class="content ${navigated ? 'enter' : ''}" id="content">${view.render(m.params, query)}</main></div></div>`;
+  qs('#ttl').textContent = typeof view.title === 'function' ? view.title(m.params) : view.title;
+  qs('#backSlot').innerHTML = view.back ? `<a class="btn ghost icon sm" href="#${view.back}" aria-label="Volver">${icon('left')}</a>` : '';
+  const c = qs('#content');
+  c.className = 'content' + (navigated ? ' enter' : '');
+  c.innerHTML = view.render(m.params, query);
+  view.mount?.(c, m.params);
   updateChrome();
-  view.mount?.(qs('#content'), m.params);
-  window.scrollTo(0, keepScroll);
-  qs('#menu').onclick = () => qs('#side').classList.toggle('open');
-  qs('#theme').onclick = () => { toggleTheme('admin'); render(false); };
-  qs('#logout').onclick = () => { S.logout('admin'); render(); };
-  qs('#bell').onclick = openNotifications;
+  if (navigated) window.scrollTo(0, 0); else window.scrollTo(0, keepScroll);
+  lastSig = signature();
 }
 
 function updateChrome() {
   const nav = qs('#nav');
   if (!nav || !current) return;
-  nav.innerHTML = NAV.map(([p, l, ic, cnt]) => { const n = cnt ? cnt() : 0; return `<a href="#${p}" class="${current.path === p || current.path.startsWith(p + '/') ? 'on' : ''}">${icon(ic, 'sm')}${l}${n ? `<span class="count">${n}</span>` : ''}</a>`; }).join('');
+  nav.innerHTML = NAV.map(([p, l, ic, cnt]) => { const n = cnt ? cnt() : 0; return `<a href="#${p}" class="${current.path === p || current.path.startsWith(p + '/') ? 'on' : ''}" ${current.path === p ? 'aria-current="page"' : ''}>${icon(ic, 'sm')}${l}${n ? `<span class="count">${n}</span>` : ''}</a>`; }).join('');
+  const unread = S.unreadCount(null, 'admin');
+  qs('#bell').innerHTML = `${icon('bell')}${unread ? `<span class="count" style="position:absolute;top:4px;right:2px">${unread > 9 ? '9+' : unread}</span>` : ''}`;
+  qs('#theme').innerHTML = icon(document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon');
 }
 
 function openNotifications() {
@@ -637,7 +670,16 @@ function openNotifications() {
   S.markNotificationsRead(null, 'admin');
 }
 
-function refresh() { render(false); }
+/** Refresco pedido por una acción del propio admin: siempre redibuja la pantalla actual. */
+function refresh() { render(false, true); }
+
+/* Solo refrescamos cuando cambió algo que el panel muestra (toda acción relevante deja un registro en
+   auditoría o una notificación). Así el movimiento del mapa o el "escribiendo…" no redibujan el panel. */
+let lastSig = '';
+function signature() {
+  const d = db();
+  return `${d.audit[0]?.id}|${d.notifications[0]?.id}|${d.notifications.filter((n) => n.app === 'admin' && !n.leida).length}|${d.reviews.length}`;
+}
 
 /* ───────────── arranque ───────────── */
 if (new URLSearchParams(location.search).get('reset') === '1') { S.resetAll(); location.replace(location.pathname + location.hash); }
@@ -653,8 +695,11 @@ document.addEventListener('click', (e) => {
   if (fn) { e.preventDefault(); fn(a, current.params); }
 });
 window.addEventListener('hashchange', () => { qs('#side')?.classList.remove('open'); render(true); });
-let pend = false;
-const onChange = () => { if (pend) return; pend = true; requestAnimationFrame(() => { pend = false; refresh(); }); };
+let liveTimer = null;
+const onChange = () => {
+  clearTimeout(liveTimer);
+  liveTimer = setTimeout(() => { if (admin && signature() !== lastSig) render(false); }, 250);
+};
 S.subscribe(onChange);
 initSync('admin', () => { if (S.syncFromStorage()) onChange(); });
 setInterval(() => S.tick(), 1500);

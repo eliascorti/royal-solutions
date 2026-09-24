@@ -5,7 +5,7 @@ import { initSync, setPresenceUser } from './sync.js';
 import { initDevtools } from './devtools.js';
 import { APP_VERSION, BARRIOS } from './data.js';
 import {
-  icon, esc, avatar, toast, pushBanner, run, initTheme, toggleTheme, parseHash, matchRoute, go, skeleton, delay,
+  icon, esc, avatar, toast, pushBanner, run, initTheme, toggleTheme, parseHash, matchRoute, go, setNavigator, skeleton, delay,
   fmtRel, fmtTime, empty, sheet, qs, qsa,
 } from './ui.js';
 
@@ -33,6 +33,41 @@ export function startMobileApp(cfg) {
   let current = null; // { key, view }
   const seen = new Set();
 
+  /* ── Pila de navegación propia ──
+     No usamos history.back(): dentro de la vista demo los dos teléfonos comparten el historial del navegador.
+     La pila recuerda por dónde vino el usuario en esta app; si se entró directo por un link, "volver" va al padre lógico. */
+  const stack = [];
+  let pendingOp = null; // 'replace' | 'push'
+  const tabRoots = new Set(cfg.tabs.map((t) => '#' + t.path));
+  function nav(path, opts = {}) {
+    const h = '#' + path;
+    const drops = [].concat(opts.drop || []);
+    if (drops.length) for (let i = stack.length - 1; i >= 0; i--) if (drops.some((d) => stack[i].startsWith('#' + d))) stack.splice(i, 1);
+    pendingOp = drops.length ? 'push' : opts.replace ? 'replace' : null;
+    if (location.hash === h) { trackHash(); render(true); return; }
+    if (opts.replace || drops.length) location.replace(h); else location.hash = h;
+  }
+  function trackHash() {
+    const h = location.hash || '#/';
+    const base = h.split('?')[0];
+    if (tabRoots.has(base)) stack.length = 0; // las pestañas del menú inferior reinician la pila
+    if (pendingOp === 'replace' && stack.length) stack[stack.length - 1] = h;
+    else if (!pendingOp && stack.length > 1 && stack[stack.length - 2] === h) stack.pop(); // fue un "volver"
+    else if (stack.at(-1) !== h) stack.push(h);
+    pendingOp = null;
+  }
+  function parentOf(pattern, params) {
+    const p = cfg.parents?.[pattern];
+    if (!p) return cfg.home;
+    const path = typeof p === 'function' ? p(params, ctx) : p;
+    return path.replace(/:(\w+)/g, (_, k) => params[k] ?? '');
+  }
+  function goBack() {
+    if (stack.length > 1) { location.hash = stack[stack.length - 2]; return; }
+    nav(parentOf(current?.pattern, ctx.params), { replace: true });
+  }
+  setNavigator(nav);
+
   const routes = {
     '/login': loginView(cfg),
     '/registro': registerView(cfg),
@@ -56,17 +91,17 @@ export function startMobileApp(cfg) {
     let { path, query } = parseHash();
     if (path === '/') path = ctx.user ? cfg.home : '/login';
     let m = matchRoute(routes, path);
-    if (!m) { go(ctx.user ? cfg.home : '/login'); return; }
-    if (!ctx.user && !m.view.public) { go('/login'); return; }
-    if (ctx.user && m.view.public && path === '/login') { go(cfg.home); return; }
+    if (!m) { nav(ctx.user ? cfg.home : '/login', { replace: true }); return; }
+    if (!ctx.user && !m.view.public) { nav('/login', { replace: true }); return; }
+    if (ctx.user && m.view.public && path === '/login') { nav(cfg.home, { replace: true }); return; }
     const guard = ctx.user && cfg.guard?.(ctx, m.pattern);
-    if (guard && guard !== path) { go(guard); return; }
+    if (guard && guard !== path) { nav(guard, { replace: true }); return; }
 
     ctx.params = m.params; ctx.query = query;
     const view = m.view;
     const key = location.hash;
     const isNew = navigated || current?.key !== key;
-    current = { key, view };
+    current = { key, view, pattern: m.pattern };
 
     renderChrome(view);
     const scroll = isNew ? 0 : $screen.scrollTop;
@@ -152,20 +187,21 @@ export function startMobileApp(cfg) {
     const a = e.target.closest('[data-act]');
     if (!a) return;
     const name = a.dataset.act;
-    if (name === '__back') { history.length > 1 ? history.back() : go(cfg.home); return; }
+    if (name === '__back') { goBack(); return; }
     if (name === '__theme') { toggleTheme(app); render(false); return; }
-    if (name === '__logout') { S.logout(app); setPresenceUser(null); go('/login'); return; }
+    if (name === '__logout') { S.logout(app); setPresenceUser(null); stack.length = 0; nav('/login', { replace: true }); return; }
     const fn = current?.view.actions?.[name];
     if (fn) { e.preventDefault(); fn(a, e, ctx); }
   });
 
-  window.addEventListener('hashchange', () => render(true));
+  window.addEventListener('hashchange', () => { trackHash(); render(true); });
 
   // ── onboarding (una sola vez por app) ──
   loadUser();
   seedSeen();
   function seedSeen() { if (ctx.user) S.notificationsOf(ctx.user.id, app).forEach((n) => seen.add(n.id)); }
   window.addEventListener('rs:login', () => { loadUser(); seedSeen(); });
+  trackHash();
   if (!localStorage.getItem(`rs_onboarding_done_${app}`)) showOnboarding(cfg, () => render(true));
   else render(true);
 
@@ -285,7 +321,7 @@ function registerView(cfg) {
           S.setSession(cfg.app, u.id);
           window.dispatchEvent(new Event('rs:login'));
           toast('Cuenta creada', 'ok');
-          go(cfg.afterRegister || cfg.home);
+          go(cfg.afterRegister || cfg.home, { replace: true });
         });
       };
     },
@@ -336,7 +372,7 @@ function resetView() {
           await S.net();
           S.resetPassword(ctx.params.token, f.p1.value);
           toast('Contraseña actualizada. Ya podés entrar.', 'ok');
-          go('/login');
+          go('/login', { drop: '/recuperar' });
         });
       };
     },
