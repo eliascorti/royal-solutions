@@ -73,7 +73,12 @@ function nextId(prefix) {
   return `${prefix}-${db.seq[prefix]}`;
 }
 
-export const rubro = (id) => RUBROS.find((r) => r.id === id);
+/** Rubro con la comisión y el nivel de riesgo vigentes según la configuración del admin. */
+export const rubro = (id) => {
+  const r = RUBROS.find((x) => x.id === id);
+  if (!r || !db?.config) return r;
+  return { ...r, riesgo: db.config.nivelPorRubro?.[id] || r.riesgo, comision: db.config.comisiones?.[id] ?? r.comision };
+};
 export const barrio = (id) => BARRIOS.find((b) => b.id === id);
 export const user = (id) => db.users.find((u) => u.id === id);
 export const provider = (id) => db.providers.find((p) => p.id === id);

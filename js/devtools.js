@@ -44,7 +44,16 @@ function open(app) {
       <p class="xs faint mono">Tip: abrí cualquier app con ?reset=1 para resetear y recargar.</p>
     </div>`,
   });
-  const reload = () => { s.close(); setTimeout(() => location.reload(), 150); };
+  const reload = () => {
+    s.close();
+    setTimeout(() => {
+      // En la vista demo se recargan los dos teléfonos para que tomen las sesiones nuevas
+      try {
+        if (window.top !== window) { window.top.document.querySelectorAll('iframe').forEach((f) => f.contentWindow.location.reload()); return; }
+      } catch { /* sin acceso al padre */ }
+      location.reload();
+    }, 150);
+  };
   s.el.querySelectorAll('[data-dv]').forEach((b) => {
     b.onclick = async () => {
       const k = b.dataset.dv;

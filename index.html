@@ -92,11 +92,11 @@
         <p>Alta con verificación por nivel de riesgo, feed de changas por distancia, agenda, billetera y deuda de comisión por efectivo.</p>
         <span class="go">Entrar como Ramiro →</span>
       </a>
-      <div class="app off" data-tip="Próximamente" aria-disabled="true">
+      <a class="app" href="admin.html">
         <span class="k">03 · WEB</span><h2>Panel Admin</h2>
-        <p>Verificaciones, órdenes, disputas, comisiones, tracción y auditoría.</p>
-        <span class="go" style="color:var(--text-3)">En construcción</span>
-      </div>
+        <p>Verificaciones con documentos, órdenes, disputas, comisiones por efectivo, tracción del POC y auditoría de cada acción.</p>
+        <span class="go">Entrar como Operaciones →</span>
+      </a>
     </nav>
 
     <section class="facts" aria-label="Diferenciales">
@@ -113,6 +113,7 @@
     <div class="demo-bar">
       <span class="logo"><span class="mark">R</span>Vista demo</span>
       <div class="row">
+        <a class="btn sm" href="admin.html" target="_blank" rel="noopener">Abrir panel admin</a>
         <button class="btn sm" id="reloadBtn">Recargar teléfonos</button>
         <button class="btn sm" id="closeBtn">Salir de la vista demo</button>
       </div>
@@ -164,7 +165,7 @@
     document.getElementById('reloadBtn').onclick = () => frames.forEach((f) => { f.src = f.dataset.src; });
     window.addEventListener('resize', fit);
     setInterval(tickClock, 1000); tickClock();
-    if (location.hash === '#demo') openDemo();
+    if (location.hash === '#demo' || location.pathname.replace(/\/$/, '') === '/demo') openDemo();
   </script>
 </body>
 </html>
