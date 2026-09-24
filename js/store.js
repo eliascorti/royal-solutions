@@ -276,6 +276,16 @@ export function updateProfile(uid, fields, passConfirm) {
   });
 }
 
+/** Datos de identidad cargados en el alta de prestador (deben coincidir con el DNI). */
+export function setIdentity(uid, data) {
+  return mutate(() => {
+    if (data.dni && db.users.some((x) => x.dni === data.dni && x.id !== uid)) throw new AppError('Ese DNI ya está registrado en otra cuenta.');
+    if (data.dni && db.dniBloqueados.includes(data.dni)) throw new AppError('No podemos dar de alta ese DNI. Contactá a soporte.');
+    Object.assign(user(uid), data);
+    audit({ id: uid, rol: 'prestador' }, 'prestador.identidad', 'usuario', uid);
+  });
+}
+
 export function setPrefs(uid, prefs) { return mutate(() => { Object.assign(user(uid).prefs, prefs); }); }
 
 export function addCard(uid, number, venc) {
@@ -1346,8 +1356,6 @@ export function resetOnboarding() { ['cliente', 'prestador'].forEach((a) => loca
 export function advanceClock(ms) {
   mutate(() => {
     db.clockOffset = (db.clockOffset || 0) + ms;
-    // Los trabajos programados también se corren para no quedar "en el futuro"
-    db.scheduled.forEach((j) => { j.at -= 0; });
     audit({ rol: 'sistema', nombre: 'Devtools' }, 'demo.avanzar_tiempo', 'reloj', '—', `+${Math.round(ms / 60000)} min`);
   });
 }

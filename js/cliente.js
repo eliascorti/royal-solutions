@@ -180,7 +180,10 @@ const stepper = (n) => `<div class="stack" style="margin-bottom:16px"><div class
 const pub1 = {
   back: true, title: 'Publicar changa', skeleton: false, live: false,
   render(ctx) {
-    if (!draft || ctx.query.nuevo) draft = newDraft(ctx);
+    if (!draft || ctx.query.nuevo) {
+      draft = newDraft(ctx);
+      if (ctx.query.nuevo) { history.replaceState(null, '', '#/publicar/1' + (ctx.query.rubro ? `?rubro=${ctx.query.rubro}` : '')); delete ctx.query.nuevo; }
+    }
     if (ctx.query.rubro && !draft.rubroId) draft.rubroId = ctx.query.rubro;
     const r = draft.rubroId && S.rubro(draft.rubroId);
     return `${stepper(1)}<div class="stack">
