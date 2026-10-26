@@ -37,7 +37,6 @@ function open(app) {
       <div class="upper">Simular evento</div>
       <div class="card list">
         <button class="li" data-sim="postulacion">${icon('briefcase')}<span class="grow small">Nueva postulación</span></button>
-        <button class="li" data-sim="en_camino">${icon('nav')}<span class="grow small">Prestador en camino</span></button>
         <button class="li" data-sim="pago">${icon('cash')}<span class="grow small">Cliente confirma pago</span></button>
         <button class="li" data-sim="doc_vencido">${icon('file')}<span class="grow small">Documento vencido</span></button>
       </div>
@@ -65,7 +64,7 @@ function open(app) {
       if (k === 'scenario') {
         if (await confirmDialog('Se resetean los datos y se inicia sesión como Lucía (cliente) y Ramiro (prestador).', { title: 'Cargar escenario demo', ok: 'Cargar' })) {
           S.loadScenario();
-          location.hash = app === 'prestador' ? '#/trabajos' : app === 'admin' ? '#/dashboard' : '#/mis-changas';
+          location.hash = app === 'prestador' ? '#/trabajos' : app === 'admin' ? '#/usuarios' : '#/mis-changas';
           reload();
         }
       }

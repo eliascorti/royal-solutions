@@ -94,7 +94,7 @@ const trabajos = {
 /* ───────────── Detalle de trabajo + postulación ───────────── */
 const PLANTILLAS = [
   'Hola, puedo pasar hoy. Llevo los materiales básicos y te confirmo el precio final al ver el trabajo.',
-  'Buenas, tengo experiencia con este tipo de arreglo. Lo resuelvo en el día, con garantía de 30 días.',
+  'Buenas, tengo experiencia con este tipo de arreglo. Lo resuelvo en el día, con el alcance que acordemos.',
   'Estoy cerca de tu zona. Si te sirve paso en la franja que elegiste.',
 ];
 const trabajo = {
@@ -107,15 +107,15 @@ const trabajo = {
     const rc = S.ratingOf(cu.id, 'p2c');
     const km = S.distKm(p, r.direccion);
     const mine = S.getDb().applications.find((a) => a.requestId === r.id && a.providerId === p.id && a.estado === 'activa');
-    const open = ['abierta', 'con_postulaciones'].includes(r.estado);
+    const open = ['abierta'].includes(r.estado);
     const chk = S.canApply(p);
     const workable = S.canWorkRubro(p, r.rubroId);
     const rb = S.rubro(r.rubroId);
-    const sug = mine?.precio || Math.round(((r.presupuestoRef || (rb.precio[0] + rb.precio[1]) / 2 * 0.8) * (r.urgente ? 1.2 : 1)) / 500) * 500;
+    const sug = mine?.precio || Math.round(((r.presupuestoRef || (rb.precio[0] + rb.precio[1]) / 2 * 0.8) * 1) / 500) * 500;
     const fecha = mine?.fecha || r.cuando.fecha || S.isoDate(S.now());
     const franja = mine?.franja || r.cuando.franja || S.currentFranja();
     return `<div class="stack">
-      <div class="row wrap gap-1">${statusBadge('request', r.estado, L)}${r.urgente ? `<span class="badge accent">${icon('zap')}Urgente · +${S.getDb().config.recargoUrgentePct}% sugerido</span>` : ''}</div>
+      <div class="row wrap gap-1">${statusBadge('request', r.estado, L)}${r.urgente ? `<span class="badge accent">${icon('zap')}Urgente</span>` : ''}</div>
       <div class="row top">${icon(rb.icono, 'lg')}<div class="grow"><h1 style="font-size:19px">${esc(r.descripcion)}</h1><div class="small muted">${esc(rb.nombre)} · ${esc(S.barrio(r.direccion.barrio).nombre)} · <span class="mono">${km} km</span></div></div></div>
       ${r.fotos?.length ? `<div class="photos">${r.fotos.map((f) => `<div class="ph"><img src="${f}" alt="Foto del cliente"></div>`).join('')}</div>` : ''}
       <dl class="kv card pad"><dt>Cuándo</dt><dd>${r.cuando.tipo === 'asap' ? 'Lo antes posible' : `${fmtDay(r.cuando.fecha)} · ${FRANJAS[r.cuando.franja]}`}</dd><dt>Presupuesto de referencia</dt><dd>${r.presupuestoRef ? moneyHtml(r.presupuestoRef) : 'Sin referencia'}</dd><dt>Pago previsto</dt><dd>${MEDIOS[r.medioPrevisto].label}</dd><dt>Publicada</dt><dd class="mono">${fmtRel(r.creadoEn, S.now())}</dd><dt>Postulados</dt><dd class="mono">${S.applicationsOf(r.id).length}</dd><dt>Comisión Royal</dt><dd class="mono">${rb.comision}%</dd></dl>
@@ -132,9 +132,9 @@ const trabajo = {
   },
   cta(ctx) {
     const r = S.request(ctx.params.id);
-    if (!r || !['abierta', 'con_postulaciones'].includes(r.estado) || !S.canApply(ctx.provider).ok || !S.canWorkRubro(ctx.provider, r.rubroId)) return '';
+    if (!r || !['abierta'].includes(r.estado) || !S.canApply(ctx.provider).ok || !S.canWorkRubro(ctx.provider, r.rubroId)) return '';
     const mine = S.getDb().applications.find((a) => a.requestId === r.id && a.providerId === ctx.provider.id && a.estado === 'activa');
-    return mine ? '<button class="btn" data-act="withdraw">Retirar</button><button class="btn primary" data-act="apply">Guardar cambios</button>' : '<button class="btn primary" data-act="apply">Enviar postulación</button>';
+    return mine ? '<button class="btn primary" data-act="apply">Guardar cambios</button>' : '<button class="btn primary" data-act="apply">Enviar postulación</button>';
   },
   mount(el, ctx) {
     const r = S.request(ctx.params.id);
@@ -193,21 +193,14 @@ const orden = {
     const d = o.disputaId && S.dispute(o.disputaId);
     const head = {
       pendiente_confirmacion: ['Nueva orden para confirmar', `Tenés <b class="mono" data-countdown="${o.confirmarAntesDe}">--:--</b> para aceptar. Si vence, se cancela sola.`],
-      confirmada: ['Orden confirmada', o.asap ? 'El cliente te espera lo antes posible.' : `${fmtDay(o.fecha)} · ${FRANJAS[o.franja]}`],
-      en_camino: [o.tracking?.arrived ? 'Llegaste' : `En camino · ${o.tracking?.eta ?? '—'} min`, 'Pedile al cliente su código de 4 dígitos para iniciar.'],
-      en_curso: ['Trabajo en curso', 'Cuando termines, informá el monto cobrado.'],
-      finalizada_pend_cliente: ['Esperando confirmación del cliente', `Informaste ${money(o.montoFinal)} · ${MEDIOS[o.medio].label}.`],
+      confirmada: o.ejecutada ? ['Esperando confirmación del monto', `Informaste ${money(o.montoFinal)}. La orden sigue confirmada hasta el registro del pago.`] : ['Orden confirmada', `${fmtDay(o.fecha)} · ${FRANJAS[o.franja]}`],
       finalizada: ['Orden finalizada', o.calificoPrestador ? 'Ya calificaste al cliente.' : 'Calificá al cliente.'],
-      calificada: ['Orden finalizada y calificada', ''],
-      en_disputa: ['En revisión por Royal', 'Sumá tu versión y evidencia. Te avisamos la resolución.'],
-      resuelta: ['Reporte resuelto', d?.resolucion?.nota || ''],
+      en_revision: ['En revisión por Royal', 'Sumá tu versión y evidencia. Te avisamos la resolución.'],
       cancelada: ['Orden cancelada', `${o.cancelacion?.actor === 'prestador' ? 'La cancelaste' : 'La canceló el cliente'}: ${o.cancelacion?.motivo || ''}${o.cancelacion?.tardia ? ' · tardía' : ''}`],
       rechazada: ['Rechazaste la orden', ''], vencida: ['Venció sin confirmar', 'No respondiste dentro del plazo.'],
     }[o.estado] || [L.order[o.estado], ''];
     return `<div class="stack">
-      <div class="card pad stack" style="gap:6px;border-left:3px solid var(--accent)"><div class="row between">${statusBadge('order', o.estado, L)}${o.garantia ? `<span class="badge ok">${icon('shield')}Garantía Royal</span>` : ''}</div><h1 style="font-size:20px">${esc(head[0])}</h1><p class="small muted">${head[1]}</p><div style="margin-top:6px">${orderProgress(o, L)}</div></div>
-      ${o.estado === 'en_camino' && o.tracking ? mapSvg({ me: o.direccion, mover: { x: o.tracking.x, y: o.tracking.y, label: ctx.user.nombre[0] + ctx.user.apellido[0] }, dest: o.direccion }) : ''}
-      ${o.estado === 'en_camino' ? `<div class="card pad stack"><label class="label" for="code">Código del cliente</label><input class="input code-input" id="code" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="····"><p class="xs muted">${o.intentosCodigo ? `Intentos restantes: ${3 - o.intentosCodigo}. ` : ''}El código confirma que llegaste al domicilio correcto.</p></div>` : ''}
+      <div class="card pad stack" style="gap:6px;border-left:3px solid var(--accent)"><div class="row between">${statusBadge('order', o.estado, L)}</div><h1 style="font-size:20px">${esc(head[0])}</h1><p class="small muted">${head[1]}</p><div style="margin-top:6px">${orderProgress(o, L)}</div></div>
       ${d ? `<div class="banner ${d.estado === 'resuelta' ? 'ok' : 'warn'}">${icon('scale')}<div><b>${esc(d.id)} · ${esc(L.dispute[d.estado])}</b><div class="small">${esc(d.motivo)}</div>${d.resolucion ? `<div class="small">A favor de ${esc(d.resolucion.favor)}. ${esc(d.resolucion.nota || '')}</div>` : ''}</div></div>${d.estado !== 'resuelta' && !d.evidencias.some((ev) => ev.autor === ctx.user.id) ? '<button class="btn block" data-act="evidence">Sumar mi versión</button>' : ''}` : ''}
       <div class="card list"><div class="li">${avatar(cu)}<div class="grow"><div class="small strong">${esc(cu.nombre)} ${esc(cu.apellido)}</div><div class="xs muted">${rc.count ? `${rc.avg.toFixed(1)} ★ como cliente` : 'Cliente nuevo'}</div></div></div>
         <button class="li" data-go="/chat/${o.id}">${icon('message')}<span class="grow small">Mensajes</span>${(() => { const n = S.messagesOf(o.id).filter((m) => m.from !== ctx.user.id && !m.leido).length; return n ? `<span class="count">${n}</span>` : ''; })()}${icon('right', 'sm chev')}</button></div>
@@ -222,9 +215,8 @@ const orden = {
       ${o.medio === 'efectivo' && S.ACTIVE.includes(o.estado) ? `<div class="banner info">${icon('cash')}<div>Cobrás en mano. La comisión de ${o.comisionPct}% se suma a tu deuda y la saldás desde Billetera.</div></div>` : ''}
       <div class="section-title"><h2>Timeline</h2></div>
       <ul class="timeline">${[...o.timeline].reverse().map((h, i) => `<li class="${i === 0 ? 'now' : ''}"><div>${esc(h.texto)}</div><div class="t">${fmtDate(h.t)} ${fmtTime(h.t)} · ${esc(h.actor)}</div></li>`).join('')}</ul>
-      ${['en_curso', 'finalizada_pend_cliente', 'finalizada'].includes(o.estado) ? `<button class="btn ghost block" data-act="report">${icon('flag')}Reportar un problema</button>` : ''}
-      ${['en_camino', 'en_curso'].includes(o.estado) ? `<button class="btn ghost block" data-act="help">${icon('lifebuoy')}Ayuda / emergencia</button>` : ''}
-      ${['confirmada', 'en_camino'].includes(o.estado) ? '<button class="btn danger block" data-act="cancel">Cancelar orden</button>' : ''}
+      ${o.ejecutada && ['confirmada','finalizada'].includes(o.estado) ? `<button class="btn ghost block" data-act="report">${icon('flag')}Reportar un problema</button>` : ''}
+      ${['pendiente_confirmacion','confirmada'].includes(o.estado) && !o.ejecutada ? '<button class="btn danger block" data-act="cancel">Cancelar orden</button>' : ''}
     </div>`;
   },
   cta(ctx) {
@@ -232,32 +224,19 @@ const orden = {
     if (!o || o.providerId !== ctx.provider.id) return '';
     switch (o.estado) {
       case 'pendiente_confirmacion': return '<button class="btn danger" data-act="reject">Rechazar</button><button class="btn primary" data-act="accept">Aceptar</button>';
-      case 'confirmada': return `<button class="btn primary" data-act="go">${icon('nav')}Salir hacia el domicilio</button>`;
-      case 'en_camino': return '<button class="btn primary" data-act="code">Validar código</button>';
-      case 'en_curso': return '<button class="btn primary" data-act="finish">Finalizar trabajo</button>';
-      case 'finalizada': case 'calificada': case 'resuelta': return o.calificoPrestador ? '' : `<button class="btn primary" data-go="/calificar/${o.id}">Calificar al cliente</button>`;
+      case 'confirmada': return o.ejecutada ? '' : '<button class="btn primary" data-act="finish">Finalizar trabajo</button>';
+      case 'finalizada': return o.calificoPrestador ? '' : `<button class="btn primary" data-go="/calificar/${o.id}">Calificar al cliente</button>`;
       default: return '';
     }
   },
   actions: {
     accept(b, e, ctx) { run(b, async () => { await S.net(); S.acceptOrder(ctx.params.id, me(ctx)); toast('Orden confirmada', 'ok'); }); },
     async reject(b, e, ctx) { const m = await reasonSheet('Rechazar orden', MOTIVOS_RECHAZO); if (m) run(null, async () => { await S.net(); S.rejectOrder(ctx.params.id, me(ctx), m); toast('Orden rechazada', 'ok'); go('/trabajos'); }); },
-    go(b, e, ctx) { run(b, async () => { await S.net(); S.startTrip(ctx.params.id, me(ctx)); toast('Le avisamos al cliente que vas en camino', 'ok'); }); },
-    code(b, e, ctx) {
-      const v = qs('#code')?.value.trim();
-      if (!/^\d{4}$/.test(v || '')) { toast('El código tiene 4 dígitos', 'err'); return; }
-      run(b, async () => {
-        await S.net();
-        const r = S.enterCode(ctx.params.id, v, me(ctx));
-        if (r.ok) toast('Código correcto. ¡A trabajar!', 'ok');
-        else toast(`Código incorrecto. Te quedan ${r.restantes} intentos.`, 'err');
-      });
-    },
     finish(b, e, ctx) {
       const o = S.order(ctx.params.id);
       const s = sheet({
         title: 'Finalizar trabajo',
-        body: `<div class="stack"><div class="field"><label for="mf">Monto ${o.medio === 'efectivo' ? 'cobrado en efectivo' : 'a cobrar'}</label><div class="input-group"><span class="prefix">$</span><input class="input" id="mf" inputmode="numeric" value="${o.precioAcordado.toLocaleString('es-AR')}"></div><span class="hint">Acordado: <span class="mono">${money(o.precioAcordado)}</span>. Si cambió, explicale el motivo al cliente por el chat.</span></div>
+        body: `<div class="stack"><div class="field"><label for="mf">Monto ${o.medio === 'efectivo' ? 'cobrado en efectivo' : 'a cobrar'}</label><div class="input-group"><span class="prefix">$</span><input class="input" id="mf" inputmode="numeric" value="${o.precioAcordado.toLocaleString('es-AR')}"></div><span class="hint">Acordado: <span class="mono">${money(o.precioAcordado)}</span>. El cliente debe confirmar el monto informado (CU-17).</span></div>
           <p class="small muted">El cliente confirma el monto en su app. ${o.medio === 'efectivo' ? `Se registra una comisión de ${o.comisionPct}% a saldar.` : `La comisión de ${o.comisionPct}% se descuenta al acreditarse.`}</p></div>`,
         footer: '<button class="btn primary block" data-ok>Informar y finalizar</button>',
       });
@@ -269,7 +248,7 @@ const orden = {
     async cancel(b, e, ctx) {
       const o = S.order(ctx.params.id);
       const late = S.isLateCancel(o);
-      const m = await reasonSheet('Cancelar orden', MOTIVOS_CANCELACION_PREST, late ? 'Cancelación tardía: suma a tu historial y afecta tu posición en las búsquedas.' : '');
+      const m = await reasonSheet('Cancelar orden', MOTIVOS_CANCELACION_PREST, late ? 'Cancelación tardía: queda registrada en el historial (CU-15).' : '');
       if (m) run(null, async () => { await S.net(); S.cancelOrder(o.id, me(ctx), m); toast('Orden cancelada', 'ok'); });
     },
     report(b, e, ctx) {
@@ -296,14 +275,14 @@ const calificar = {
   render(ctx) {
     const o = S.order(ctx.params.id);
     const cu = S.user(o.clienteId);
-    if (!['finalizada', 'calificada', 'resuelta'].includes(o.estado)) return empty('lock', 'Todavía no podés calificar', 'Se habilita cuando el cliente confirma el pago.');
+    if (!['finalizada'].includes(o.estado)) return empty('lock', 'Todavía no podés calificar', 'Se habilita cuando el cliente confirma el pago.');
     if (o.calificoPrestador) return empty('check', 'Ya calificaste', '', `<button class="btn" data-go="/orden/${o.id}">Ver orden</button>`);
     return `<div class="stack center">${avatar(cu, 'lg')}<h1>¿Cómo fue trabajar con ${esc(cu.nombre)}?</h1>
       <div class="starpick" id="sp">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-n="${n}" aria-label="${n} estrellas">${icon('star')}</button>`).join('')}</div>
       <div class="chips wrap" id="tg" style="justify-content:center">${REVIEW_TAGS_PRESTADOR.map((t) => `<button type="button" class="chip" data-t="${t}">${t}</button>`).join('')}</div>
       <div class="field" style="text-align:left"><label for="cm">Comentario (opcional)</label><textarea class="textarea" id="cm"></textarea></div></div>`;
   },
-  cta: (ctx) => { const o = S.order(ctx.params.id); return ['finalizada', 'calificada', 'resuelta'].includes(o.estado) && !o.calificoPrestador ? '<button class="btn primary" data-act="send">Enviar</button>' : ''; },
+  cta: (ctx) => { const o = S.order(ctx.params.id); return ['finalizada'].includes(o.estado) && !o.calificoPrestador ? '<button class="btn primary" data-act="send">Enviar</button>' : ''; },
   mount(el) {
     calificar._s = 0; calificar._t = new Set();
     el.querySelector('#sp')?.addEventListener('click', (e) => { const b = e.target.closest('[data-n]'); if (!b) return; calificar._s = Number(b.dataset.n); qsa('#sp button').forEach((x) => x.classList.toggle('on', Number(x.dataset.n) <= calificar._s)); });
@@ -325,7 +304,7 @@ const agenda = {
     const p = ctx.provider;
     const days = Array.from({ length: 7 }, (_, i) => S.isoDate(S.now() + i * 86400000));
     if (!agendaDay || !days.includes(agendaDay)) agendaDay = days[0];
-    const orders = S.ordersOfProvider(p.id).filter((o) => ['confirmada', 'en_camino', 'en_curso', 'pendiente_confirmacion', 'finalizada_pend_cliente'].includes(o.estado));
+    const orders = S.ordersOfProvider(p.id).filter((o) => ['confirmada', 'pendiente_confirmacion'].includes(o.estado));
     const byDay = (d) => orders.filter((o) => (o.asap ? S.isoDate(o.creadoEn) : o.fecha) === d);
     const dow = (d) => ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'][new Date(d + 'T12:00:00').getDay()];
     const slotHtml = (d) => Object.entries(FRANJAS).map(([k, v]) => {
@@ -352,7 +331,7 @@ const historial = {
   render(ctx) {
     const os = S.ordersOfProvider(ctx.provider.id);
     if (!os.length) return empty('clock', 'Sin órdenes todavía', 'Postulate a changas cerca para conseguir tu primer trabajo.', '<button class="btn primary" data-go="/trabajos">Ver trabajos</button>');
-    const groups = [['Activas', S.ACTIVE], ['Finalizadas', ['finalizada', 'calificada', 'resuelta']], ['Canceladas, rechazadas o vencidas', ['cancelada', 'rechazada', 'vencida']]];
+    const groups = [['Activas', S.ACTIVE], ['Finalizadas', ['finalizada']], ['Canceladas, rechazadas o vencidas', ['cancelada', 'rechazada', 'vencida']]];
     return `<div class="stack">${groups.map(([t, st]) => { const g = os.filter((o) => st.includes(o.estado)); return g.length ? `<div class="upper">${t} · ${g.length}</div><div class="card list">${g.map((o) => `<button class="li" data-go="/orden/${o.id}">${rubroIcon(o.rubroId)}<div class="grow"><div class="small ellipsis">${esc(o.descripcion)}</div><div class="xs muted"><span class="mono">${o.id}</span> · ${fmtDate(o.creadoEn)} · ${esc(S.user(o.clienteId).nombre)}</div></div><div class="col" style="align-items:flex-end;gap:2px"><span class="small">${moneyHtml(o.montoFinal || o.precioAcordado)}</span>${statusBadge('order', o.estado, L)}</div></button>`).join('')}</div>` : ''; }).join('')}</div>`;
   },
 };
@@ -403,7 +382,7 @@ const reputacion = {
     const st = S.providerStats(p);
     const r = st.rating;
     return `<div class="stack">
-      <div class="stat-grid"><div><div class="xs muted">Calificación</div><div class="v">${r.count ? r.avg.toFixed(2) : '—'}</div>${r.count ? stars(r.avg) : ''}</div><div><div class="xs muted">Reseñas verificadas</div><div class="v">${r.count}</div></div><div><div class="xs muted">Cancelaciones tardías</div><div class="v">${p.cancelacionesTardias}</div></div><div><div class="xs muted">Penalizaciones</div><div class="v">${p.penalizacion || 0}</div></div></div>
+      <div class="stat-grid"><div><div class="xs muted">Calificación</div><div class="v">${r.count ? r.avg.toFixed(2) : '—'}</div>${r.count ? stars(r.avg) : ''}</div><div><div class="xs muted">Reseñas verificadas</div><div class="v">${r.count}</div></div><div><div class="xs muted">Cancelaciones tardías</div><div class="v">${p.cancelacionesTardias}</div></div></div>
       ${r.count ? `<div class="dist">${[5, 4, 3, 2, 1].map((n) => `<span>${n}</span><div class="bar"><i style="width:${(r.dist[n - 1] / r.count) * 100}%"></i></div><span class="right">${r.dist[n - 1]}</span>`).join('')}</div>` : ''}
       <div class="section-title"><h2>Reseñas recibidas</h2></div>
       ${r.reviews.length || S.getDb().reviews.some((x) => x.destId === ctx.user.id && x.estado === 'reportada') ? `<div class="card list">${S.getDb().reviews.filter((x) => x.destId === ctx.user.id && x.dir === 'c2p').sort((a, b) => b.t - a.t).slice(0, 30).map((rv) => { const au = S.user(rv.autorId); return `<div class="li" style="flex-direction:column;align-items:flex-start;gap:4px"><div class="row between" style="width:100%">${stars(rv.estrellas)}<span class="xs faint mono">${fmtDate(rv.t)} · ${esc(rv.orderId)}</span></div>${rv.comentario ? `<p class="small">${esc(rv.comentario)}</p>` : ''}<div class="row between" style="width:100%"><span class="xs muted">${esc(au.nombre)} ${esc(au.apellido[0])}. · ${esc(S.rubro(rv.rubroId).nombre)}</span>${rv.estado === 'reportada' ? '<span class="badge warn">En moderación</span>' : rv.estado === 'baja' ? '<span class="badge">Dada de baja</span>' : rv.estrellas <= 3 ? `<button class="btn ghost sm" data-act="report" data-id="${rv.id}">${icon('flag', 'sm')}Reportar</button>` : ''}</div></div>`; }).join('')}</div>` : empty('star', 'Todavía no tenés reseñas', 'Solo califican clientes con una orden finalizada: tus reseñas son verificadas.')}
@@ -428,7 +407,7 @@ const perfil = {
     const docAlert = S.docsOf(p.id).some((d) => ['vencido', 'rechazado'].includes(d.estado)) || v.matriculas.some((m) => m.porVencer);
     return `<div class="stack">
       <div class="row">${avatar(u, 'lg', ['medio', 'alto'].includes(v.nivel))}<div class="grow"><h1>${esc(u.nombre)} ${esc(u.apellido)}</h1><div class="small muted">${p.rubros.map((r) => esc(S.rubro(r).nombre)).join(' · ') || 'Sin rubros'}</div><div class="row gap-1" style="margin-top:4px">${statusBadge('provider', p.estado, L)}<span class="badge ${v.nivel === 'ninguno' ? '' : 'ok'}">${S.NIVEL_LABEL[v.nivel]}</span></div></div></div>
-      ${p.video?.estado === 'solicitado' ? `<div class="banner warn">${icon('video')}<div class="grow"><b>Video de validación pendiente.</b> Grabá 5 segundos mirando a cámara.</div><button class="btn sm primary" data-act="video">Grabar</button></div>` : ''}
+      ${p.video?.estado === 'solicitado' ? `<div class="banner warn">${icon('video')}<div class="grow"><b>Video de validación pendiente · alcance completo simulado.</b> Grabá 5 segundos mirando a cámara.</div><button class="btn sm primary" data-act="video">Grabar</button></div>` : ''}
       ${p.estado !== 'aprobado' ? applyBlockBanner(ctx) : ''}
       <div class="card list">
         <button class="li" data-go="/reputacion">${icon('star')}<span class="grow">Reputación</span>${rating(st.rating.avg, st.rating.count)}${icon('right', 'sm chev')}</button>
@@ -469,7 +448,7 @@ function uploadSheet(ctx, tipo, rubroId) {
   const s = sheet({
     title: DOC_TIPOS[tipo] + (rubroId ? ` · ${S.rubro(rubroId).nombre}` : ''),
     body: `<div class="stack">
-      <p class="small muted">${isSelfie ? 'Sacate una foto sosteniendo tu DNI al lado de la cara.' : isMat ? 'Foto de la matrícula completa, con el número y la fecha de vencimiento legibles.' : isAnt ? 'Certificado del Registro Nacional de Reincidencia, emitido hace menos de 6 meses.' : 'Foto nítida, sin reflejos, con las 4 esquinas visibles.'} JPG, PNG o PDF hasta 5 MB.</p>
+      <p class="small muted">${isSelfie ? 'Sacate una foto sosteniendo tu DNI al lado de la cara.' : isMat ? 'Foto de la matrícula completa, con el número y la fecha de vencimiento legibles.' : isAnt ? 'Certificado de antecedentes ficticio; sin consulta externa.' : 'Foto nítida, sin reflejos, con las 4 esquinas visibles.'} JPG, PNG o PDF hasta 5 MB.</p>
       <div id="pv" class="doc-thumb" style="width:100%;height:auto;min-height:120px;display:flex;align-items:center;justify-content:center;color:var(--text-3)">${icon('image')}</div>
       <div class="row"><label class="btn grow">${icon(isSelfie ? 'camera' : 'upload')}${isSelfie ? 'Tomar selfie' : 'Subir archivo'}<input type="file" id="fi" class="sr-only" accept="image/*,application/pdf" ${isSelfie ? 'capture="user"' : ''}></label><button type="button" class="btn grow" data-sim>${icon('camera')}Simular captura</button></div>
       ${isMat ? `<div class="field"><label for="nu">N° de matrícula</label><input class="input mono" id="nu" placeholder="Mat. Litoral Gas 4417"></div><div class="field"><label for="en">Entidad emisora</label><input class="input" id="en" value="${esc({ gas: 'Litoral Gas S.A.', electricidad: 'Empresa Provincial de la Energía (EPE)', aires: 'Cámara de Aire Acondicionado y Refrigeración' }[rubroId] || '')}"></div><div class="field"><label for="ve">Vencimiento</label><input class="input mono" type="date" id="ve" min="${S.isoDate(S.now() + 86400000)}" value="${S.isoDate(S.now() + 365 * 86400000)}"></div>` : ''}
@@ -483,7 +462,7 @@ function uploadSheet(ctx, tipo, rubroId) {
       const f = e.target.files[0];
       if (f.size > 5 * 1024 * 1024) throw new Error('El archivo supera los 5 MB.');
       file = await readImage(f, 560);
-      pv.innerHTML = file.dataUrl ? `<img src="${file.dataUrl}" alt="Vista previa" style="max-height:200px;width:auto">` : `<div class="small">${icon('file')} ${esc(file.name)}</div>`;
+      pv.innerHTML = file.dataUrl && file.mime !== 'application/pdf' ? `<img src="${file.dataUrl}" alt="Vista previa" style="max-height:200px;width:auto">` : `<div class="small">${icon('file')} PDF adjunto: ${esc(file.name)}</div>`;
     } catch (err) { toast(err.message, 'err'); }
   };
   s.el.querySelector('[data-sim]').onclick = () => {

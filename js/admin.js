@@ -15,51 +15,6 @@ const actor = () => ({ id: admin.id, rol: 'admin' });
 const db = () => S.getDb();
 const uName = (id) => S.fullName(S.user(id));
 const provName = (pid) => S.fullName(S.user(S.provider(pid)?.userId));
-const pct = (n) => `${(n * 100).toFixed(1).replace('.', ',')}%`;
-const delta = (cur, prev) => {
-  if (!prev) return '<span class="d">—</span>';
-  const d = (cur - prev) / prev;
-  return `<span class="d ${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '▲' : '▼'} ${Math.abs(d * 100).toFixed(1).replace('.', ',')}% vs. semana ant.</span>`;
-};
-
-/* ───────────── métricas ───────────── */
-const DONE = ['finalizada', 'calificada', 'resuelta'];
-function doneAt(o) { return (o.timeline.find((t) => t.estado === 'finalizada') || o.timeline.at(-1)).t; }
-function metrics() {
-  const now = S.now();
-  const orders = db().orders;
-  const done = orders.filter((o) => DONE.includes(o.estado) && o.montoFinal);
-  const inRange = (from, to) => done.filter((o) => { const t = doneAt(o); return t >= from && t < to; });
-  const w0 = inRange(now - 7 * DAY, now + DAY), w1 = inRange(now - 14 * DAY, now - 7 * DAY);
-  const gmv = (arr) => arr.reduce((a, o) => a + o.montoFinal, 0);
-  const com = (arr) => arr.reduce((a, o) => a + Math.round(o.montoFinal * o.comisionPct / 100), 0);
-  const led = db().ledger;
-  const cobradas30 = -led.filter((m) => m.tipo === 'comision_deducida' && m.t > now - 30 * DAY).reduce((a, m) => a + m.monto, 0) + led.filter((m) => m.tipo === 'pago_deuda' && m.t > now - 30 * DAY).reduce((a, m) => a + m.monto, 0);
-  const adeudadas = db().providers.reduce((a, p) => a + Math.max(0, S.debtOf(p.id)), 0);
-  const activos = db().providers.filter((p) => p.estado === 'aprobado' && (p.disponible || orders.some((o) => o.providerId === p.id && o.creadoEn > now - 30 * DAY))).length;
-  const reqs = db().requests;
-  const firstApp = reqs.map((r) => { const a = db().applications.filter((x) => x.requestId === r.id).sort((x, y) => x.creadoEn - y.creadoEn)[0]; return a ? (a.creadoEn - r.creadoEn) / 60000 : null; }).filter((x) => x != null && x >= 0);
-  const closed = reqs.filter((r) => ['asignada', 'vencida', 'cancelada'].includes(r.estado));
-  const fill = closed.length ? closed.filter((r) => r.estado === 'asignada').length / closed.length : 0;
-  const revs = db().reviews.filter((r) => r.dir === 'c2p' && r.estado !== 'baja').sort((a, b) => b.t - a.t).slice(0, 80);
-  const nps = revs.length ? Math.round(((revs.filter((r) => r.estrellas === 5).length - revs.filter((r) => r.estrellas <= 3).length) / revs.length) * 100) : 0;
-  const weeks = Array.from({ length: 10 }, (_, i) => { const to = now - (9 - i) * 7 * DAY + DAY; return { l: fmtDate(to - DAY), v: gmv(inRange(to - 7 * DAY, to)) }; });
-  return { w0, w1, gmv, com, cobradas30, adeudadas, activos, firstApp: firstApp.length ? firstApp.reduce((a, b) => a + b, 0) / firstApp.length : 0, fill, nps, weeks, done };
-}
-
-const ACCION = {
-  'orden.creada': 'Nueva orden', 'orden.confirmada': 'Orden confirmada', 'orden.en_camino': 'Prestador en camino', 'orden.iniciada': 'Trabajo iniciado con código',
-  'orden.finalizada_prestador': 'Trabajo finalizado', 'orden.cancelada': 'Orden cancelada', 'orden.cancelada_tardia': 'Cancelación tardía', 'orden.rechazada': 'Orden rechazada', 'orden.vencida': 'Orden vencida',
-  'orden.codigo_bloqueado': 'Código fallido 3 veces', 'solicitud.publicada': 'Changa publicada', 'solicitud.cancelada': 'Changa cancelada', 'postulacion.creada': 'Nueva postulación', 'postulacion.editada': 'Postulación editada',
-  'pago.acreditado': 'Pago acreditado', 'pago.comprobante': 'Comprobante de transferencia', 'pago.rechazado': 'Pago rechazado', 'pago.en_revision': 'Pago en revisión', 'pago.tarjeta_tokenizada': 'Tarjeta tokenizada',
-  'resena.creada': 'Nueva reseña', 'resena.reportada': 'Reseña reportada', 'resena.baja': 'Reseña dada de baja', 'resena.aprobada': 'Reseña mantenida',
-  'disputa.abierta': 'Disputa abierta', 'disputa.resuelta': 'Disputa resuelta', 'disputa.en_analisis': 'Disputa en análisis',
-  'prestador.enviado': 'Alta enviada a revisión', 'prestador.reenviado': 'Correcciones reenviadas', 'prestador.aprobar': 'Prestador aprobado', 'prestador.observar': 'Alta observada', 'prestador.rechazar': 'Alta rechazada',
-  'prestador.suspender': 'Prestador suspendido', 'prestador.reactivar': 'Prestador reactivado', 'prestador.video': 'Video de validación solicitado', 'prestador.alta_iniciada': 'Alta de prestador iniciada',
-  'documento.cargado': 'Documento cargado', 'documento.vencido': 'Documento vencido', 'chat.dato_enmascarado': 'Dato de contacto ocultado', 'comision.pago_registrado': 'Pago de comisiones',
-  'usuario.registro': 'Nuevo registro', 'auth.login': 'Inicio de sesión', 'soporte.ayuda': 'Pedido de ayuda', 'config.actualizada': 'Configuración actualizada',
-};
-const accionLabel = (a) => ACCION[a] || a;
 /** Aviso con el cambio de estado: "Franco Ibarra · Pendiente de revisión → Aprobado". */
 function stateToast(kind, before, after, who = '') {
   if (before === after) return;
@@ -81,50 +36,6 @@ function provAct(b, id, fn) {
 /* ───────────── vistas ───────────── */
 const views = {};
 
-views['/dashboard'] = {
-  title: 'Dashboard',
-  render() {
-    const m = metrics();
-    const g0 = m.gmv(m.w0), g1 = m.gmv(m.w1);
-    const c0 = m.com(m.w0), c1 = m.com(m.w1);
-    const byRubro = RUBROS.map((r) => ({ l: r.nombre.slice(0, 6), v: m.done.filter((o) => o.rubroId === r.id).length })).sort((a, b) => b.v - a.v);
-    const pend = {
-      verif: verifQueue().length, disp: db().disputes.filter((d) => d.estado !== 'resuelta').length,
-      transf: db().payments.filter((p) => ['pendiente_acreditacion', 'en_revision'].includes(p.estado)).length,
-      rese: db().reviews.filter((r) => r.estado === 'reportada').length,
-    };
-    const kpi = (l, v, d = '', hint = '') => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${d}${hint ? `<div class="xs faint">${hint}</div>` : ''}</div>`;
-    return `<div class="stack-lg">
-      <div class="kpis">
-        ${kpi('GMV · 7 días', money(g0), delta(g0, g1))}
-        ${kpi('Órdenes completadas · 7 días', m.w0.length, delta(m.w0.length, m.w1.length))}
-        ${kpi('Take rate', pct(g0 ? c0 / g0 : 0), '', 'comisión 3–5% por rubro')}
-        ${kpi('Comisiones generadas · 7 días', money(c0), delta(c0, c1))}
-        ${kpi('Comisiones cobradas · 30 días', money(m.cobradas30), '', 'deducidas + pagos de deuda')}
-        ${kpi('Comisiones adeudadas', money(m.adeudadas), '', 'por pagos en efectivo')}
-        ${kpi('Prestadores activos', m.activos, '', 'aprobados con actividad en 30 días')}
-        ${kpi('Tiempo a 1ª postulación', `${Math.round(m.firstApp)} min`, '', `fill rate ${pct(m.fill)} · NPS ${m.nps}`)}
-      </div>
-      <div class="grid2">
-        <div class="panel"><div class="ph"><h2>GMV semanal</h2><span class="xs faint mono">últimas 10 semanas</span></div><div class="pb">${lineChart(m.weeks.map((w) => w.v), m.weeks.map((w) => w.l), { fmt: (v) => `${Math.round(v / 1000)}k` })}</div></div>
-        <div class="panel"><div class="ph"><h2>Pendientes</h2></div><div class="list" style="border:0">
-          <a class="li" href="#/verificaciones">${icon('shield')}<span class="grow">Verificaciones</span><b class="mono">${pend.verif}</b></a>
-          <a class="li" href="#/disputas">${icon('scale')}<span class="grow">Disputas abiertas</span><b class="mono">${pend.disp}</b></a>
-          <a class="li" href="#/ordenes?pago=pendiente_acreditacion">${icon('bank')}<span class="grow">Transferencias a conciliar</span><b class="mono">${pend.transf}</b></a>
-          <a class="li" href="#/resenas">${icon('flag')}<span class="grow">Reseñas reportadas</span><b class="mono">${pend.rese}</b></a>
-        </div></div>
-      </div>
-      <div class="grid2">
-        <div class="panel"><div class="ph"><h2>Actividad en vivo</h2><span class="badge ok"><span class="dot ok"></span>en tiempo real</span></div><div class="feed" id="feed">${feedHtml()}</div></div>
-        <div class="panel"><div class="ph"><h2>Órdenes completadas por rubro</h2></div><div class="pb">${barChart(byRubro.slice(0, 7))}</div></div>
-      </div>
-    </div>`;
-  },
-};
-function feedHtml() {
-  return db().audit.filter((a) => !a.accion.startsWith('auth.')).slice(0, 30).map((a) => `<div class="ev ${S.now() - a.t < 6000 ? 'new' : ''}"><span class="t">${fmtTime(a.t)}</span><div><b>${esc(accionLabel(a.accion))}</b> <span class="mono faint">${esc(a.entidadId)}</span><div class="xs muted">${esc(a.actor)}${a.detalle ? ` · ${esc(a.detalle)}` : ''}</div></div></div>`).join('');
-}
-
 /* Verificaciones */
 function verifQueue() {
   const rank = { alto: 3, medio: 2, bajo: 1 };
@@ -136,7 +47,7 @@ views['/verificaciones'] = {
   title: 'Verificaciones',
   render() {
     const q = verifQueue();
-    return `<p class="small muted" style="margin-bottom:12px">Prioridad por nivel de riesgo del rubro y antigüedad. Rubros de riesgo bajo se validan automáticamente con DNI + selfie.</p>
+    return `<p class="small muted" style="margin-bottom:12px">Certificados y altas: CU-06/07. Identidad, antecedentes y niveles de riesgo: ampliaciones simuladas del alcance completo. Los parámetros por rubro son ejemplos para la demo.</p>
       ${q.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Prestador</th><th>Rubros</th><th>Riesgo</th><th>Estado</th><th>Documentos</th><th>Esperando</th></tr></thead><tbody>
       ${q.map(({ p, u, riesgo, since }) => { const docs = S.docsOf(p.id); return `<tr class="click" data-go="/verificaciones/${p.id}"><td><div class="row">${avatar(u, 'sm')}<div><div class="strong">${esc(S.fullName(u))}</div><div class="xs faint mono">${p.id} · DNI ${esc(u.dni)}</div></div></div></td><td>${p.rubros.map((r) => esc(S.rubro(r).nombre)).join(', ')}</td><td><span class="badge ${riesgo === 'alto' ? 'danger' : riesgo === 'medio' ? 'warn' : 'info'}">${RIESGO_LABEL[riesgo]}</span></td><td>${statusBadge('provider', p.estado, L)}${p.video?.estado === 'enviado' ? ' <span class="badge info">Video</span>' : ''}</td><td class="mono">${docs.filter((d) => d.estado === 'aprobado').length}/${S.requiredDocs(p).length}${docs.some((d) => d.estado === 'en_revision') ? ' <span class="badge warn">a revisar</span>' : ''}</td><td class="mono">${fmtRel(since, S.now())}</td></tr>`; }).join('')}
       </tbody></table></div>` : empty('shield', 'Cola vacía', 'No hay altas ni documentos esperando revisión.')}`;
@@ -259,10 +170,10 @@ views['/ordenes/:id'] = {
           <dt>Cliente</dt><dd><a href="#/usuarios/${o.clienteId}">${esc(uName(o.clienteId))}</a></dd><dt>Prestador</dt><dd><a href="#/usuarios/${S.provider(o.providerId).userId}">${esc(provName(o.providerId))}</a></dd>
           <dt>Origen</dt><dd>${o.origen === 'directa' ? 'Contratación directa' : `Postulación · <span class="mono">${o.requestId}</span>`}</dd><dt>Dirección</dt><dd>${esc(o.direccion.calle)} · ${esc(S.barrio(o.direccion.barrio)?.nombre || '')}</dd>
           <dt>Precio acordado</dt><dd>${moneyHtml(o.precioAcordado)}</dd><dt>Monto final</dt><dd>${moneyHtml(o.montoFinal)}</dd><dt>Comisión</dt><dd>${o.comisionPct}% · ${moneyHtml(Math.round((o.montoFinal || o.precioAcordado) * o.comisionPct / 100))}</dd>
-          <dt>Código de inicio</dt><dd class="mono">${o.codigo} · ${o.intentosCodigo} intentos fallidos</dd>${o.cancelacion ? `<dt>Cancelación</dt><dd>${esc(o.cancelacion.actor)} · ${esc(o.cancelacion.motivo)}${o.cancelacion.tardia ? ' · <span class="badge warn">tardía</span>' : ''}</dd>` : ''}
+          ${o.cancelacion ? `<dt>Cancelación</dt><dd>${esc(o.cancelacion.actor)} · ${esc(o.cancelacion.motivo)}${o.cancelacion.tardia ? ' · <span class="badge warn">tardía</span>' : ''}</dd>` : ''}
         </dl></div></div>
-        <div class="panel"><div class="ph"><h2>Pago</h2>${pay ? statusBadge('payment', pay.estado, L) : ''}</div><div class="pb">${pay ? `<dl class="kv"><dt>Medio</dt><dd>${MEDIOS[pay.medio].label}</dd><dt>Monto</dt><dd>${moneyHtml(pay.monto)}</dd><dt>Comisión</dt><dd>${moneyHtml(pay.comision)} ${pay.medio === 'efectivo' ? '(diferida)' : '(deducida)'}</dd>${pay.ref ? `<dt>Referencia</dt><dd class="mono">${pay.ref}</dd>` : ''}<dt>Garantía Royal</dt><dd>${o.garantia ? 'Sí' : 'No'}</dd></dl>
-          ${pay.comprobante ? `<img src="${pay.comprobante}" alt="Comprobante" style="max-width:220px;margin-top:12px;border:1px solid var(--border)">` : pay.estado === 'pendiente_acreditacion' ? '<p class="xs muted" style="margin-top:8px">Comprobante simulado adjunto.</p>' : ''}
+        <div class="panel"><div class="ph"><h2>Pago</h2>${pay ? statusBadge('payment', pay.estado, L) : ''}</div><div class="pb">${pay ? `<dl class="kv"><dt>Medio</dt><dd>${MEDIOS[pay.medio].label}</dd><dt>Monto</dt><dd>${moneyHtml(pay.monto)}</dd><dt>Comisión</dt><dd>${moneyHtml(pay.comision)} ${pay.medio === 'efectivo' ? '(diferida)' : '(deducida)'}</dd>${pay.ref ? `<dt>Referencia</dt><dd class="mono">${pay.ref}</dd>` : ''}</dl>
+          ${pay.comprobante ? `<div style="max-width:300px;margin-top:12px">${docImage({archivo:pay.comprobante}, null, "")}</div>` : pay.estado === 'pendiente_acreditacion' ? '<p class="xs muted" style="margin-top:8px">Comprobante simulado adjunto.</p>' : ''}
           ${['pendiente_acreditacion', 'en_revision'].includes(pay.estado) ? `<div class="row" style="margin-top:12px"><button class="btn sm ok" data-act="acreditar">Acreditar ${money(pay.monto)}</button>${pay.estado === 'pendiente_acreditacion' ? '<button class="btn sm" data-act="mismatch">Monto no coincide</button>' : ''}</div>` : ''}
           <ul class="timeline" style="margin-top:12px">${pay.historial.map((h) => `<li><div>${esc(h.texto || L.payment[h.estado])}</div><div class="t">${fmtDateTime(h.t)}</div></li>`).join('')}</ul>` : '<p class="small muted">Todavía no se generó el pago.</p>'}</div></div>
         ${d ? `<a class="banner warn" href="#/disputas/${d.id}">${icon('scale')}<div>Disputa <b class="mono">${d.id}</b> · ${esc(L.dispute[d.estado])} · ${esc(d.motivo)}</div></a>` : ''}
@@ -305,7 +216,7 @@ views['/disputas/:id'] = {
     const side = (uid) => (uid === o.clienteId ? 'Cliente' : 'Prestador');
     return `<div class="split">
       <div class="stack">
-        <div class="panel"><div class="ph"><h2>${esc(d.motivo)}</h2>${statusBadge('dispute', d.estado, L)}</div><div class="pb"><dl class="kv"><dt>Orden</dt><dd><a class="mono" href="#/ordenes/${o.id}">${o.id}</a> · ${esc(S.rubro(o.rubroId).nombre)}</dd><dt>Cliente</dt><dd>${esc(uName(o.clienteId))}</dd><dt>Prestador</dt><dd>${esc(uName(pu))} · score ${S.provider(o.providerId).penalizacion || 0} penalizaciones</dd><dt>Precio acordado</dt><dd>${moneyHtml(o.precioAcordado)}</dd><dt>Monto informado</dt><dd>${moneyHtml(o.montoFinal)}</dd><dt>Medio</dt><dd>${MEDIOS[o.medio].label}</dd><dt>Abierta</dt><dd>${fmtDateTime(d.creadaEn)}</dd></dl></div></div>
+        <div class="panel"><div class="ph"><h2>${esc(d.motivo)}</h2>${statusBadge('dispute', d.estado, L)}</div><div class="pb"><dl class="kv"><dt>Orden</dt><dd><a class="mono" href="#/ordenes/${o.id}">${o.id}</a> · ${esc(S.rubro(o.rubroId).nombre)}</dd><dt>Cliente</dt><dd>${esc(uName(o.clienteId))}</dd><dt>Prestador</dt><dd>${esc(uName(pu))}</dd><dt>Precio acordado</dt><dd>${moneyHtml(o.precioAcordado)}</dd><dt>Monto informado</dt><dd>${moneyHtml(o.montoFinal)}</dd><dt>Medio</dt><dd>${MEDIOS[o.medio].label}</dd><dt>Abierta</dt><dd>${fmtDateTime(d.creadaEn)}</dd></dl></div></div>
         <div class="panel"><div class="ph"><h2>Evidencias</h2></div><div class="list" style="border:0">${d.evidencias.map((ev) => `<div class="li" style="align-items:flex-start">${avatar(S.user(ev.autor), 'sm')}<div class="grow"><div class="small strong">${esc(uName(ev.autor))} <span class="badge outline">${side(ev.autor)}</span></div><p class="small">${esc(ev.texto)}</p>${ev.foto ? `<img src="${ev.foto}" alt="Evidencia" style="max-width:200px;margin-top:6px;border:1px solid var(--border)">` : ''}<div class="xs faint mono">${fmtDateTime(ev.t)}</div></div></div>`).join('')}${d.evidencias.some((e) => e.autor === pu) ? '' : '<div class="li"><span class="small muted">El prestador todavía no presentó su versión.</span></div>'}</div></div>
         <div class="panel"><div class="ph"><h2>Chat de la orden</h2><span class="xs faint">solo lectura</span></div><div class="pb">${chatReadonly(o.id)}</div></div>
       </div>
@@ -315,7 +226,7 @@ views['/disputas/:id'] = {
         <div class="panel"><div class="ph"><h2>Resolver</h2></div><div class="pb stack">
           <div class="field"><span class="label">A favor de</span><div class="seg" id="fv"><button type="button" data-v="cliente">Cliente</button><button type="button" data-v="prestador">Prestador</button><button type="button" data-v="parcial" class="on">Parcial</button></div></div>
           <div class="field"><label for="ma">Monto final ajustado</label><div class="input-group"><span class="prefix">$</span><input class="input" id="ma" inputmode="numeric" value="${(o.montoFinal || o.precioAcordado).toLocaleString('es-AR')}"></div><span class="hint">Acordado ${money(o.precioAcordado)} · informado ${money(o.montoFinal)}</span></div>
-          <label class="check"><input type="checkbox" id="pn"> <span>Aplicar penalización de score al prestador</span></label>
+
           <div class="field"><label for="nt">Resolución (se notifica a ambas partes)</label><textarea class="textarea" id="nt" placeholder="Ej.: se valida el repuesto extra con el ticket; se ajusta el monto."></textarea></div>
           <button class="btn primary" data-act="resolve">Cerrar disputa</button>
         </div></div>`}
@@ -332,7 +243,7 @@ views['/disputas/:id'] = {
     resolve: async (b, { id }) => {
       const favor = qs('#fv .on').dataset.v;
       if (!(await confirmDialog(`Se cierra la disputa a favor de ${favor} y se notifica a ambas partes.`, { title: 'Cerrar disputa', ok: 'Cerrar disputa' }))) return;
-      run(b, async () => { await S.net(120, 280); const before = S.dispute(id).estado; S.resolveDispute(id, { favor, montoAjustado: Number(qs('#ma').value.replace(/\D/g, '')) || null, penalizar: qs('#pn').checked, nota: qs('#nt').value.trim() }, actor()); stateToast('dispute', before, 'resuelta', id); refresh(); });
+      run(b, async () => { await S.net(120, 280); const before = S.dispute(id).estado; S.resolveDispute(id, { favor, montoAjustado: Number(qs('#ma').value.replace(/\D/g, '')) || null, penalizar: false, nota: qs('#nt').value.trim() }, actor()); stateToast('dispute', before, 'resuelta', id); refresh(); });
     },
   },
 };
@@ -375,7 +286,7 @@ views['/usuarios/:id'] = {
       <div class="stack">
         <div class="panel"><div class="ph"><div class="row">${avatar(u)}<div><h2>${esc(S.fullName(u))}</h2><div class="xs muted mono">${u.id}</div></div></div><span class="badge ${u.estado === 'activo' ? 'ok' : 'danger'}">${u.estado}</span></div>
           <div class="pb"><dl class="kv"><dt>Email</dt><dd>${esc(u.email)}</dd><dt>DNI</dt><dd class="mono">${esc(u.dni)}${db().dniBloqueados.includes(u.dni) ? ' <span class="badge danger">bloqueado</span>' : ''}</dd><dt>Teléfono</dt><dd class="mono">${esc(u.telefono)}</dd><dt>Roles</dt><dd>${u.roles.join(', ')}</dd><dt>Alta</dt><dd>${fmtDateY(u.creadoEn)}</dd><dt>Dirección</dt><dd>${esc(u.direcciones[0]?.calle || '')}</dd><dt>Cancelaciones tardías</dt><dd class="mono">${u.cancelacionesTardias || 0}</dd>
-          ${p ? `<dt>Prestador</dt><dd><a href="#/verificaciones/${p.id}">${statusBadge('provider', p.estado, L)}</a></dd><dt>Rubros</dt><dd>${p.rubros.map((r) => esc(S.rubro(r).nombre)).join(', ')}</dd><dt>Calificación</dt><dd>${rating(st.rating.avg, st.rating.count)}</dd><dt>Deuda comisión</dt><dd>${moneyHtml(st.deuda)}</dd><dt>Penalizaciones</dt><dd class="mono">${p.penalizacion || 0}</dd>` : ''}</dl></div></div>
+          ${p ? `<dt>Prestador</dt><dd><a href="#/verificaciones/${p.id}">${statusBadge('provider', p.estado, L)}</a></dd><dt>Rubros</dt><dd>${p.rubros.map((r) => esc(S.rubro(r).nombre)).join(', ')}</dd><dt>Calificación</dt><dd>${rating(st.rating.avg, st.rating.count)}</dd><dt>Deuda comisión</dt><dd>${moneyHtml(st.deuda)}</dd>` : ''}</dl></div></div>
         <div class="row wrap">${u.roles.includes('admin') ? '' : u.estado === 'activo' ? '<button class="btn sm danger" data-act="ua" data-a="suspender">Suspender cuenta</button>' : '<button class="btn sm" data-act="ua" data-a="reactivar">Reactivar</button>'}${u.roles.includes('admin') || db().dniBloqueados.includes(u.dni) ? '' : '<button class="btn sm danger solid" data-act="ua" data-a="bloquear_dni">Bloquear por DNI</button>'}</div>
       </div>
       <div class="stack">
@@ -444,7 +355,7 @@ views['/comisiones'] = {
   actions: {
     pay: (b) => {
       const deuda = S.debtOf(b.dataset.id);
-      const s = sheet({ modal: true, title: `Registrar pago · ${provName(b.dataset.id)}`, body: `<div class="stack"><div class="field"><label for="pm">Monto</label><div class="input-group"><span class="prefix">$</span><input class="input" id="pm" inputmode="numeric" value="${deuda.toLocaleString('es-AR')}"></div></div><div class="field"><label for="pmd">Medio</label><select class="select" id="pmd"><option value="transferencia">Transferencia</option><option value="mercadopago">Mercado Pago</option><option value="efectivo">Efectivo en oficina</option></select></div></div>`, footer: '<button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>Registrar</button>' });
+      const s = sheet({ modal: true, title: `Registrar pago · ${provName(b.dataset.id)}`, body: `<div class="stack"><div class="field"><label for="pm">Monto</label><div class="input-group"><span class="prefix">$</span><input class="input" id="pm" inputmode="numeric" value="${deuda.toLocaleString('es-AR')}"></div></div><div class="field"><label for="pmd">Medio</label><select class="select" id="pmd"><option value="transferencia">Transferencia</option><option value="mercadopago">Mercado Pago</option></select></div></div>`, footer: '<button class="btn" data-x>Cancelar</button><button class="btn primary" data-ok>Registrar</button>' });
       s.el.querySelector('[data-x]').onclick = s.close;
       const ok = s.el.querySelector('[data-ok]');
       ok.onclick = () => run(ok, async () => { await S.net(120, 280); S.payDebt(b.dataset.id, Number(s.el.querySelector('#pm').value.replace(/\D/g, '')), actor(), s.el.querySelector('#pmd').value); s.close(); toast('Pago registrado', 'ok'); });
@@ -452,135 +363,17 @@ views['/comisiones'] = {
   },
 };
 
-/* Tracción / validación */
-views['/traccion'] = {
-  title: 'Tracción y validación',
-  render() {
-    const m = metrics();
-    const users = db().users.filter((u) => !u.roles.includes('admin'));
-    const clientesConChanga = new Set([...db().requests.map((r) => r.clienteId), ...db().orders.map((o) => o.clienteId)]);
-    const clientesCompletos = new Set(m.done.map((o) => o.clienteId));
-    const registros = users.length;
-    const visitas = Math.round(registros * 7.4);
-    const funnel = [['Visitas (estimado)', visitas], ['Registros', registros], ['Publicó o contrató', clientesConChanga.size], ['Orden completada', clientesCompletos.size]];
-    const ticket = m.done.length ? m.gmv(m.done) / m.done.length : 0;
-    const comProm = m.done.length ? m.com(m.done) / m.done.length : 0;
-    const activos = db().providers.filter((p) => p.estado === 'aprobado').length || 1;
-    const meses = 70 / 30;
-    const ordPrestMes = m.done.length / activos / meses;
-    const CAC = 4500;
-    const ltv = comProm * 3 * 2; // 3 órdenes/año (encuesta: cada 3–6 meses) × 2 años
-    // Cohortes por semana de primera orden
-    const firstByClient = {};
-    db().orders.forEach((o) => { if (!firstByClient[o.clienteId] || o.creadoEn < firstByClient[o.clienteId]) firstByClient[o.clienteId] = o.creadoEn; });
-    const wk = (t) => Math.floor((S.now() - t) / (7 * DAY));
-    const cohorts = Array.from({ length: 6 }, (_, i) => 9 - i * 1).map((w) => {
-      const members = Object.entries(firstByClient).filter(([, t]) => wk(t) === w).map(([c]) => c);
-      const cells = Array.from({ length: 6 }, (_, k) => {
-        if (w - k < 0) return null;
-        if (!members.length) return 0;
-        return members.filter((c) => db().orders.some((o) => o.clienteId === c && wk(o.creadoEn) === w - k)).length / members.length;
-      });
-      return { w, n: members.length, cells };
-    });
-    const hb = (rows) => `<div class="hbars">${rows.map(([l, v]) => `<div class="hbar"><span>${esc(l)}</span><span class="p">${v}%</span><div class="bar"><i style="width:${v}%"></i></div></div>`).join('')}</div>`;
-    return `<div class="stack-lg">
-      <div class="grid2e">
-        <div class="panel"><div class="ph"><h2>Encuesta a prestadores</h2><span class="xs faint">POC · mayo–junio 2026</span></div><div class="pb">${hb(ENCUESTAS.prestadores)}</div></div>
-        <div class="panel"><div class="ph"><h2>Encuesta a clientes</h2><span class="xs faint">POC · mayo–junio 2026</span></div><div class="pb">${hb(ENCUESTAS.clientes)}</div></div>
-      </div>
-      <div class="panel"><div class="ph"><h2>Embudo</h2><span class="xs faint">datos de la demo · visitas estimadas</span></div><div class="pb funnel">${funnel.map(([l, v], i) => `<div class="step"><span>${l}</span><div><div class="fb" style="width:${(v / funnel[0][1]) * 100}%;opacity:${1 - i * 0.18}"></div></div><span class="mono right">${v.toLocaleString('es-AR')}${i ? ` · ${pct(v / funnel[i - 1][1])}` : ''}</span></div>`).join('')}</div></div>
-      <div class="grid2e">
-        <div class="panel"><div class="ph"><h2>Unit economics</h2></div><div class="pb"><dl class="kv">
-          <dt>Ticket promedio</dt><dd>${moneyHtml(ticket)}</dd><dt>Comisión promedio por orden</dt><dd>${moneyHtml(comProm)}</dd><dt>Take rate</dt><dd class="mono">${pct(ticket ? comProm / ticket : 0)}</dd>
-          <dt>Órdenes por prestador activo / mes</dt><dd class="mono">${ordPrestMes.toFixed(1).replace('.', ',')}</dd><dt>CAC supuesto (cliente)</dt><dd>${moneyHtml(CAC)}</dd><dt>LTV estimado (3 órdenes/año · 2 años)</dt><dd>${moneyHtml(ltv)}</dd><dt>LTV / CAC</dt><dd class="mono strong">${(ltv / CAC).toFixed(1).replace('.', ',')}x</dd>
-        </dl><p class="xs faint" style="margin-top:12px">Frecuencia de contratación según encuesta: cada 3 a 6 meses. CAC supuesto para el lanzamiento en Santa Fe capital.</p></div></div>
-        <div class="panel"><div class="ph"><h2>Cohortes · recontratación semanal</h2></div><div class="pb" style="overflow-x:auto"><table class="tbl cohort"><thead><tr><th>Semana</th><th>Clientes</th>${[0, 1, 2, 3, 4, 5].map((k) => `<th>+${k}</th>`).join('')}</tr></thead><tbody>
-          ${cohorts.map((c) => `<tr><td class="mono">hace ${c.w} sem</td><td class="mono">${c.n}</td>${c.cells.map((v) => (v == null ? '<td></td>' : `<td style="background:color-mix(in srgb, var(--accent) ${Math.round(v * 70)}%, transparent)">${Math.round(v * 100)}%</td>`)).join('')}</tr>`).join('')}
-        </tbody></table></div></div>
-      </div>
-      <div class="panel"><div class="ph"><h2>Frente a la competencia</h2></div><div class="tbl-wrap" style="border:0"><table class="tbl"><thead><tr><th></th><th>TaskRabbit</th><th>Urban Company</th><th>Timbrit</th><th>Royal Solutions</th></tr></thead><tbody>
-        <tr><td>Asignación</td><td>Primero en responder</td><td>Directa por la app</td><td>Comparación de presupuestos</td><td class="strong">Postulación + elección del usuario</td></tr>
-        <tr><td>Verificación</td><td>Background check</td><td>Rigurosa</td><td>Parcial</td><td class="strong">DNI + antecedentes + matrícula por riesgo</td></tr>
-        <tr><td>Pago en efectivo</td><td>No</td><td>No</td><td>No</td><td class="strong">Sí, con comisión diferida</td></tr>
-        <tr><td>Geolocalización</td><td>Parcial</td><td>Sí</td><td>No</td><td class="strong">Sí, por distancia y mapa</td></tr>
-        <tr><td>Comisión al prestador</td><td colspan="3">hasta 40%</td><td class="strong mono">3–5%</td></tr>
-      </tbody></table></div></div>
-    </div>`;
-  },
-};
-
-/* Configuración */
-views['/configuracion'] = {
-  title: 'Configuración', live: false,
-  render() {
-    const c = db().config;
-    return `<form id="cfg" class="stack-lg" style="max-width:880px">
-      <div class="panel"><div class="ph"><h2>Rubros</h2><span class="xs faint">la comisión y el nivel exigido se aplican a las órdenes nuevas</span></div><div class="tbl-wrap" style="border:0"><table class="tbl"><thead><tr><th>Rubro</th><th>Comisión %</th><th>Nivel de verificación</th><th>Documentos exigidos</th></tr></thead><tbody>
-        ${RUBROS.map((r) => `<tr><td>${esc(r.nombre)}</td><td><input class="input mono" style="width:90px;min-height:34px" type="number" min="1" max="15" step="0.5" data-com="${r.id}" value="${c.comisiones[r.id]}"></td><td><select class="select" style="min-height:34px;width:auto" data-niv="${r.id}">${['bajo', 'medio', 'alto'].map((n) => `<option value="${n}" ${c.nivelPorRubro[r.id] === n ? 'selected' : ''}>${RIESGO_LABEL[n]}</option>`).join('')}</select></td><td class="small muted">${{ bajo: 'DNI + selfie (automático)', medio: '+ antecedentes', alto: '+ antecedentes + matrícula' }[c.nivelPorRubro[r.id]]}</td></tr>`).join('')}
-      </tbody></table></div></div>
-      <div class="panel"><div class="ph"><h2>Reglas</h2></div><div class="pb grid2e">
-        <div class="field"><label for="lim">Límite de deuda por efectivo ($)</label><input class="input mono" id="lim" type="number" step="500" value="${c.limiteDeuda}"></div>
-        <div class="field"><label for="pla">Plazo para confirmar una orden (min)</label><input class="input mono" id="pla" type="number" min="1" value="${c.plazoConfirmacionMin}"></div>
-        <div class="field"><label for="rec">Recargo sugerido changa urgente (%)</label><input class="input mono" id="rec" type="number" min="0" value="${c.recargoUrgentePct}"></div>
-        <div class="field"><label for="max">Changas abiertas por cliente</label><input class="input mono" id="max" type="number" min="1" value="${c.maxSolicitudesAbiertas}"></div>
-      </div></div>
-      <div class="panel"><div class="ph"><h2>Barrios habilitados · Santa Fe capital</h2></div><div class="pb chips wrap">${BARRIOS.map((b) => `<label class="chip ${c.barriosHabilitados.includes(b.id) ? 'on' : ''}"><input type="checkbox" class="sr-only" data-bar="${b.id}" ${c.barriosHabilitados.includes(b.id) ? 'checked' : ''}>${esc(b.nombre)}</label>`).join('')}</div></div>
-      <div><button class="btn primary" type="submit">Guardar configuración</button></div>
-    </form>`;
-  },
-  mount(el) {
-    const f = el.querySelector('#cfg');
-    f.addEventListener('change', (e) => { if (e.target.dataset.bar) e.target.closest('.chip').classList.toggle('on', e.target.checked); });
-    f.onsubmit = (e) => {
-      e.preventDefault();
-      const comisiones = {}, nivelPorRubro = {};
-      qsa('[data-com]', f).forEach((i) => { comisiones[i.dataset.com] = Number(i.value); });
-      qsa('[data-niv]', f).forEach((i) => { nivelPorRubro[i.dataset.niv] = i.value; });
-      const barriosHabilitados = qsa('[data-bar]', f).filter((i) => i.checked).map((i) => i.dataset.bar);
-      run(f.querySelector('[type=submit]'), async () => {
-        if (Object.values(comisiones).some((v) => !(v > 0 && v <= 15))) throw new S.AppError('Las comisiones tienen que estar entre 1% y 15%.');
-        if (!barriosHabilitados.length) throw new S.AppError('Habilitá al menos un barrio.');
-        await S.net(120, 280);
-        S.updateConfig({ comisiones, nivelPorRubro, barriosHabilitados, limiteDeuda: Number(qs('#lim').value), plazoConfirmacionMin: Number(qs('#pla').value), recargoUrgentePct: Number(qs('#rec').value), maxSolicitudesAbiertas: Number(qs('#max').value) }, actor());
-        toast('Configuración guardada', 'ok');
-        refresh();
-      });
-    };
-  },
-};
-
-/* Auditoría */
-const audF = { q: '', entidad: '', rol: '' };
-views['/auditoria'] = {
-  title: 'Auditoría', keepInputs: true,
-  render() {
-    const ents = [...new Set(db().audit.map((a) => a.entidad))].sort();
-    return `<div class="toolbar"><input class="input" id="aq" placeholder="Buscar acción, actor o ID" value="${esc(audF.q)}"><select class="select" data-f="entidad"><option value="">Entidad</option>${ents.map((e) => `<option ${audF.entidad === e ? 'selected' : ''}>${esc(e)}</option>`).join('')}</select><select class="select" data-f="rol"><option value="">Rol</option>${['cliente', 'prestador', 'admin', 'sistema'].map((r) => `<option ${audF.rol === r ? 'selected' : ''}>${r}</option>`).join('')}</select></div><div id="atbl">${auditTable()}</div>`;
-  },
-  mount(el) {
-    el.querySelector('#aq').addEventListener('input', (e) => { audF.q = e.target.value; el.querySelector('#atbl').innerHTML = auditTable(); });
-    el.querySelectorAll('[data-f]').forEach((s) => s.addEventListener('change', () => { audF[s.dataset.f] = s.value; el.querySelector('#atbl').innerHTML = auditTable(); }));
-  },
-};
-function auditTable() {
-  const q = audF.q.trim().toLowerCase();
-  let list = db().audit;
-  if (audF.entidad) list = list.filter((a) => a.entidad === audF.entidad);
-  if (audF.rol) list = list.filter((a) => a.rol === audF.rol);
-  if (q) list = list.filter((a) => `${a.accion} ${accionLabel(a.accion)} ${a.actor} ${a.entidadId} ${a.detalle}`.toLowerCase().includes(q));
-  return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Fecha</th><th>Actor</th><th>Rol</th><th>Acción</th><th>Entidad</th><th>ID</th><th>Detalle</th></tr></thead><tbody>
-    ${list.slice(0, 250).map((a) => `<tr><td class="mono">${fmtDateTime(a.t)}</td><td>${esc(a.actor)}</td><td><span class="badge outline">${a.rol}</span></td><td>${esc(accionLabel(a.accion))} <span class="xs faint mono">${esc(a.accion)}</span></td><td>${esc(a.entidad)}</td><td class="mono">${esc(a.entidadId)}</td><td class="small muted">${esc(a.detalle || '')}</td></tr>`).join('')}
-  </tbody></table></div><p class="xs faint" style="margin-top:8px">${plural(list.length, 'registro')}${list.length > 250 ? ' · mostrando 250' : ''}</p>`;
-}
-
 /* ───────────── shell del panel ───────────── */
 const NAV = [
-  ['/dashboard', 'Dashboard', 'activity'], ['/verificaciones', 'Verificaciones', 'shield', () => verifQueue().filter((x) => x.p.estado !== 'observado').length],
-  ['/ordenes', 'Órdenes', 'clipboard'], ['/disputas', 'Disputas', 'scale', () => db().disputes.filter((d) => d.estado !== 'resuelta').length],
-  ['/usuarios', 'Usuarios', 'users'], ['/resenas', 'Reseñas', 'star', () => db().reviews.filter((r) => r.estado === 'reportada').length],
-  ['/comisiones', 'Comisiones', 'percent'], ['/traccion', 'Tracción', 'chart'], ['/configuracion', 'Configuración', 'settings'], ['/auditoria', 'Auditoría', 'list'],
+  ['/usuarios', 'Usuarios', 'users'],
+  ['/verificaciones', 'Certificaciones y altas', 'shield'],
+  ['/ordenes', 'Órdenes y pagos', 'clipboard'],
+  ['/resenas', 'Moderación de reseñas', 'star'],
+  ['/disputas', 'Reportes de usuarios', 'flag'],
+  ['/comisiones', 'Comisiones', 'percent'],
 ];
+// Sin analítica comercial, cohortes ni configuración de políticas no especificadas.
+['/dashboard','/traccion','/configuracion','/auditoria'].forEach(p=>delete views[p]);
 let current = null;
 
 function loginHtml() {
@@ -625,7 +418,7 @@ function render(navigated = true, force = false) {
     shellReady = false;
     document.body.innerHTML = loginHtml();
     const f = qs('#lf');
-    const doLogin = (email, pass, btn) => run(btn, async () => { await S.net(150, 300); S.login(email, pass, 'admin'); if (!location.hash || location.hash === '#/') location.hash = '#/dashboard'; render(); });
+    const doLogin = (email, pass, btn) => run(btn, async () => { await S.net(150, 300); S.login(email, pass, 'admin'); if (!location.hash || location.hash === '#/') location.hash = '#/usuarios'; render(); });
     f.onsubmit = (e) => { e.preventDefault(); doLogin(qs('#em').value, qs('#pw').value, f.querySelector('[type=submit]')); };
     qs('#quick').onclick = (e) => doLogin('admin@royal.com', 'demo1234', e.currentTarget);
     current = null;
@@ -634,7 +427,7 @@ function render(navigated = true, force = false) {
   if (!shellReady) { renderShell(); navigated = true; }
   const { path, query } = parseHash();
   const m = matchRoute(views, path);
-  if (!m) { location.replace('#/dashboard'); return; }
+  if (!m) { location.replace('#/usuarios'); return; }
   const view = m.view;
   if (!navigated && !force && current?.path === path) {
     // refresco en vivo: no pisar lo que se está escribiendo ni un modal abierto
@@ -647,7 +440,7 @@ function render(navigated = true, force = false) {
   qs('#backSlot').innerHTML = view.back ? `<a class="btn ghost icon sm" href="#${view.back}" aria-label="Volver">${icon('left')}</a>` : '';
   const c = qs('#content');
   c.className = 'content' + (navigated ? ' enter' : '');
-  c.innerHTML = view.render(m.params, query);
+  c.innerHTML = `<p class="small muted" style="margin-bottom:16px"><a href="presentacion.html">MVP avanzado y alcance completo</a> · Operación simulada · datos ficticios</p>` + view.render(m.params, query);
   view.mount?.(c, m.params);
   updateChrome();
   if (navigated) window.scrollTo(0, 0); else window.scrollTo(0, keepScroll);

@@ -1,7 +1,7 @@
 // Datos de referencia: rubros, barrios, documentos por nivel de riesgo.
 
-export const SCHEMA_VERSION = 5;
-export const APP_VERSION = 'v0.9.2';
+export const SCHEMA_VERSION = 6;
+export const APP_VERSION = 'v0.10.0';
 
 // Riesgo del rubro → documentación exigida y comisión.
 // alto: matrícula obligatoria · medio: antecedentes · bajo: DNI + selfie (validación automática)
@@ -107,13 +107,13 @@ export const ENCUESTAS = {
     ['Usaría una app para conseguir más trabajos', 80],
     ['Acepta verificar su identidad', 90],
     ['Necesita conseguir clientes nuevos siempre', 70],
-    ['Valora un perfil con historial y calificaciones', 60],
+    ['Considera muy útil el perfil con historial (gráfico p. 13)', 50],
   ],
   clientes: [
     ['Prioriza las reseñas de otros clientes', 80],
     ['Valora la verificación de identidad', 70],
     ['Prefiere pagar en efectivo', 80],
     ['Usa billeteras digitales', 70],
-    ['Hoy depende del boca a boca', 60],
+    ['Encuentra prestadores por familiares o amigos (gráfico p. 9)', 50],
   ],
 };

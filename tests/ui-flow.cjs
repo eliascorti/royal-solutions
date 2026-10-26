@@ -1,0 +1,62 @@
+const assert=require('node:assert/strict');
+module.exports=async function(context){
+  const cliente=await context.newPage(),prestador=await context.newPage();
+  await cliente.goto('http://127.0.0.1:5501/cliente.html');
+  await cliente.evaluate(async()=>{
+    const S=await import('./js/store.js');S.resetAll();
+    const u=S.getDb().users.find(u=>u.email==='lucia@demo.com'),p=S.getDb().users.find(u=>u.email==='ramiro@demo.com');
+    S.setSession('cliente',u.id);S.setSession('prestador',p.id);
+    localStorage.setItem('rs_onboarding_done_cliente','1');localStorage.setItem('rs_onboarding_done_prestador','1');
+  });
+  await cliente.goto('http://127.0.0.1:5501/cliente.html#/publicar/1');
+  await cliente.locator('#rg [data-id="plomeria"]').click();
+  await cliente.locator('#desc').fill('Pierde agua la canilla de la cocina. Prueba de presentación.');
+  await cliente.locator('#cta [data-act="next"]').click();
+  await cliente.locator('#when [data-v="prog"]').click();
+  const date=await cliente.evaluate(()=>{const d=new Date();d.setDate(d.getDate()+40);return d.toISOString().slice(0,10);});
+  await cliente.locator('#fecha').fill(date);
+  await cliente.locator('#cta [data-act="next"]').click();
+  await cliente.locator('#pres').fill('30000');
+  await cliente.locator('#cta [data-act="next"]').click();
+  await cliente.locator('#cta [data-act="publish"]').click();
+  await cliente.waitForURL(/#\/changa\/SOL-/);
+  const rid=(new URL(cliente.url())).hash.split('/').at(-1);
+  // Open the second role: all remaining actions are performed through visible controls.
+  await prestador.goto(`http://127.0.0.1:5501/prestador.html#/trabajo/${rid}`);
+  await prestador.locator('#pr').fill('30000');
+  await prestador.locator('#ms').fill('Puedo reparar la canilla en la fecha y horario elegidos.');
+  await prestador.locator('#cta [data-act="apply"]').click();
+  await prestador.getByRole('button',{name:'Guardar cambios',exact:true}).waitFor();
+  const aid=await cliente.evaluate(async rid=>{const S=await import('./js/store.js');S.syncFromStorage();const p=S.providerByUser(S.getDb().users.find(u=>u.email==='ramiro@demo.com').id);return S.applicationsOf(rid).find(a=>a.providerId===p.id).id;},rid);
+  await cliente.locator(`[data-act="hire"][data-id="${aid}"]`).click();
+  await cliente.locator('[data-ok]').click();
+  await cliente.waitForURL(/#\/orden\/ORD-/);
+  const oid=(new URL(cliente.url())).hash.split('/').at(-1);
+  await prestador.goto(`http://127.0.0.1:5501/prestador.html#/orden/${oid}`);
+  await prestador.locator('[data-act="accept"]').click();
+  await prestador.locator('[data-act="finish"]').click();
+  await prestador.locator('#mf').fill('30000');
+  await prestador.locator('[data-ok]').click();
+  await cliente.locator(`#cta [data-go="/pago/${oid}"]`).click();
+  await cliente.waitForSelector('#mm');
+  assert.equal(await cliente.locator('#mm').count(),1);
+  await cliente.locator('[data-act="cash"]').click();
+  await cliente.waitForURL(/#\/calificar\//);
+  await cliente.locator('#sp [data-n="5"]').click();
+  await cliente.locator('#cm').fill('Demostración del circuito completo.');
+  await cliente.locator('#cta [data-act="send"]').click();
+  await cliente.waitForURL(/#\/orden\//);
+  await prestador.locator(`#cta [data-go="/calificar/${oid}"]`).click();
+  await prestador.locator('#sp [data-n="5"]').click();
+  await prestador.locator('#cta [data-act="send"]').click();
+  await prestador.waitForURL(/#\/orden\//);
+  const out=await cliente.evaluate(async oid=>{const S=await import('./js/store.js');S.syncFromStorage();return {estado:S.order(oid).estado,reviews:S.getDb().reviews.filter(r=>r.orderId===oid).length,deuda:S.getDb().ledger.filter(m=>m.orderId===oid&&m.tipo==='deuda_efectivo').reduce((a,m)=>a+m.monto,0)};},oid);
+  assert.deepEqual(out,{estado:'finalizada',reviews:2,deuda:1200});
+  for(const p of [cliente,prestador]){
+    await p.waitForSelector('.scope-notice');
+    await p.waitForFunction(()=>!document.querySelector('.push,.toast'),null,{timeout:10000});
+  }
+  await cliente.screenshot({path:'test-results/cliente-orden-finalizada.png'});
+  await prestador.screenshot({path:'test-results/prestador-orden-finalizada.png'});
+  await cliente.close();await prestador.close();
+};

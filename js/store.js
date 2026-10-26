@@ -124,18 +124,14 @@ function schedule(delayMs, type, payload) {
 
 export const SM = {
   request: {
-    abierta: { postular: 'con_postulaciones', asignar: 'asignada', cancelar: 'cancelada', vencer: 'vencida' },
-    con_postulaciones: { postular: 'con_postulaciones', asignar: 'asignada', cancelar: 'cancelada', vencer: 'vencida' },
-    asignada: { reabrir: 'con_postulaciones', cancelar: 'cancelada' },
+    abierta: { postular: 'abierta', asignar: 'asignada', cancelar: 'cancelada' },
+    asignada: { reabrir: 'abierta', cancelar: 'cancelada' },
   },
   order: {
     pendiente_confirmacion: { aceptar: 'confirmada', rechazar: 'rechazada', vencer: 'vencida', cancelar: 'cancelada' },
-    confirmada: { salir: 'en_camino', cancelar: 'cancelada' },
-    en_camino: { codigo_ok: 'en_curso', cancelar: 'cancelada' },
-    en_curso: { finalizar: 'finalizada_pend_cliente', disputa: 'en_disputa' },
-    finalizada_pend_cliente: { confirmar: 'finalizada', disputa: 'en_disputa' },
-    finalizada: { calificar: 'calificada', disputa: 'en_disputa' },
-    en_disputa: { resolver: 'resuelta' },
+    confirmada: { finalizar: 'confirmada', confirmar: 'finalizada', cancelar: 'cancelada', disputa: 'en_revision' },
+    finalizada: { disputa: 'en_revision' },
+    en_revision: { resolver: 'confirmada' },
   },
   payment: {
     pendiente: { efectivo_ok: 'acreditado', comprobante: 'pendiente_acreditacion', aprobado: 'acreditado', rechazado: 'rechazado' },
@@ -159,14 +155,13 @@ export const SM = {
 };
 
 export const ESTADOS = {
-  request: { abierta: 'Abierta', con_postulaciones: 'Con postulaciones', asignada: 'Asignada', cancelada: 'Cancelada', vencida: 'Vencida' },
+  request: { abierta: 'Abierta', asignada: 'Cerrada a postulaciones', cancelada: 'Cancelada' },
   order: {
-    pendiente_confirmacion: 'Esperando confirmación', confirmada: 'Confirmada', en_camino: 'En camino', en_curso: 'En curso',
-    finalizada_pend_cliente: 'Falta confirmar pago', finalizada: 'Finalizada', calificada: 'Calificada',
-    rechazada: 'Rechazada', vencida: 'Vencida', cancelada: 'Cancelada', en_disputa: 'En revisión', resuelta: 'Resuelta',
+    pendiente_confirmacion: 'Pendiente de confirmación', confirmada: 'Confirmada',
+    finalizada: 'Finalizada', rechazada: 'Rechazada', vencida: 'Vencida', cancelada: 'Cancelada', en_revision: 'En revisión',
   },
   payment: { pendiente: 'Pendiente', pendiente_acreditacion: 'Pendiente de acreditación', acreditado: 'Acreditado', rechazado: 'Rechazado', en_revision: 'En revisión' },
-  provider: { borrador: 'Borrador', pendiente_revision: 'Pendiente de revisión', en_revision: 'En revisión', observado: 'Observado', aprobado: 'Aprobado', rechazado: 'Rechazado', suspendido: 'Suspendido' },
+  provider: { borrador: 'Alta incompleta', pendiente_revision: 'Pendiente de verificación', en_revision: 'Pendiente de verificación', observado: 'Alta incompleta: corregir documentos', aprobado: 'Activo', rechazado: 'Alta incompleta: documentación no válida', suspendido: 'Suspendido' },
   document: { cargado: 'Cargado', en_revision: 'En revisión', aprobado: 'Vigente', rechazado: 'Rechazado', vencido: 'Vencido' },
   dispute: { abierta: 'Abierta', en_analisis: 'En análisis', resuelta: 'Resuelta' },
 };
@@ -208,9 +203,10 @@ export function login(email, pass, app) {
     if (u.pass !== pass) {
       u.intentos = (u.intentos || 0) + 1;
       if (u.intentos >= 5) { u.bloqueoHasta = now() + 15 * 60000; u.intentos = 0; audit({ id: u.id, rol: 'cliente' }, 'auth.bloqueo_temporal', 'usuario', u.id); }
+      persist();
       throw generic;
     }
-    if (u.estado !== 'activo') throw new AppError(u.estado === 'bloqueado' ? 'Esta cuenta está bloqueada. Escribinos a soporte@royalsolutions.com.ar.' : 'Tu cuenta está suspendida. Contactá a soporte.');
+    if (u.estado !== 'activo') throw new AppError(u.estado === 'bloqueado' ? 'Esta cuenta está bloqueada. Consultá el estado con el equipo del proyecto en la presentación.' : 'Tu cuenta está suspendida. Contactá a soporte.');
     if (app === 'admin' && !u.roles.includes('admin')) throw new AppError('Esta cuenta no tiene acceso al panel.');
     u.intentos = 0;
     audit({ id: u.id, rol: app === 'admin' ? 'admin' : app }, 'auth.login', 'usuario', u.id, app);
@@ -223,6 +219,7 @@ export function register(data) {
   return mutate(() => {
     const email = data.email.trim().toLowerCase();
     if (db.users.some((u) => u.email.toLowerCase() === email)) throw new AppError('Ya existe una cuenta con ese email.');
+    if (!data.nombre?.trim() || !data.apellido?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !data.telefono?.trim() || !data.pass || data.pass.length < 8 || !/\d/.test(data.pass)) throw new AppError('Completá los datos y una contraseña válida.');
     if (data.dni && db.users.some((u) => u.dni === data.dni)) throw new AppError('Ya existe una cuenta con ese DNI.');
     if (data.dni && db.dniBloqueados.includes(data.dni)) throw new AppError('No podemos crear una cuenta con ese DNI.');
     const b = barrio(data.barrio || 'centro');
@@ -264,6 +261,7 @@ export function resetPassword(token, pass) {
     if (!r || r.usado || r.venceEn < now()) throw new AppError('El enlace venció o ya fue usado. Pedí uno nuevo.');
     const u = user(r.userId);
     u.pass = pass; u.intentos = 0; u.bloqueoHasta = null; r.usado = true;
+    ['cliente', 'prestador', 'admin'].forEach(app => { if (getSession(app) === u.id) logout(app); });
     audit({ id: u.id, rol: 'cliente' }, 'auth.reset_ok', 'usuario', u.id);
     return u;
   });
@@ -284,6 +282,7 @@ export function updateProfile(uid, fields, passConfirm) {
 /** Datos de identidad cargados en el alta de prestador (deben coincidir con el DNI). */
 export function setIdentity(uid, data) {
   return mutate(() => {
+    if (!data.nombre?.trim() || !data.apellido?.trim() || !data.telefono?.trim() || !/^\d{7,8}$/.test((data.dni || '').replace(/\D/g, ''))) throw new AppError('Completá nombre, apellido, teléfono y DNI.');
     if (data.dni && db.users.some((x) => x.dni === data.dni && x.id !== uid)) throw new AppError('Ese DNI ya está registrado en otra cuenta.');
     if (data.dni && db.dniBloqueados.includes(data.dni)) throw new AppError('No podemos dar de alta ese DNI. Contactá a soporte.');
     Object.assign(user(uid), data);
@@ -408,7 +407,7 @@ export function canApply(p) {
 
 export function providerStats(p) {
   const rating = ratingOf(p.userId);
-  const trabajos = db.orders.filter((o) => o.providerId === p.id && ['finalizada', 'calificada', 'resuelta'].includes(o.estado)).length;
+  const trabajos = db.orders.filter((o) => o.providerId === p.id && o.estado === 'finalizada').length;
   const deuda = debtOf(p.id);
   return { rating, trabajos, deuda, bloqueado: deuda >= db.config.limiteDeuda, verif: verification(p), nuevo: trabajos === 0 && rating.count === 0 };
 }
@@ -447,8 +446,9 @@ export function applicationsOf(reqId) { return db.applications.filter((a) => a.r
 export function createRequest(clientId, data) {
   return mutate(() => {
     const u = user(clientId);
+    if (!rubro(data.rubroId) || !data.descripcion?.trim() || !data.direccion?.calle || !data.cuando) throw new AppError('Completá rubro, descripción, zona y fecha.');
     if (u.estado !== 'activo') throw new AppError('Tu cuenta está suspendida: no podés publicar changas.');
-    const abiertas = db.requests.filter((r) => r.clienteId === clientId && ['abierta', 'con_postulaciones'].includes(r.estado)).length;
+    const abiertas = db.requests.filter((r) => r.clienteId === clientId && ['abierta', 'abierta'].includes(r.estado)).length;
     if (abiertas >= db.config.maxSolicitudesAbiertas) throw new AppError(`Tenés ${abiertas} changas abiertas. Cerrá o cancelá alguna para publicar otra.`);
     const req = {
       id: nextId('SOL'), clienteId: clientId, rubroId: data.rubroId, descripcion: data.descripcion.trim(), fotos: data.fotos || [],
@@ -469,7 +469,7 @@ export function createRequest(clientId, data) {
 const PLANTILLAS = [
   'Hola {n}, puedo pasar hoy. Llevo los materiales básicos y te confirmo el precio final al ver el trabajo.',
   'Buenas {n}. Tengo experiencia con este tipo de arreglo, lo resuelvo en el día. El precio incluye mano de obra.',
-  '¡Hola! Estoy cerca de tu zona. Si te sirve paso en la franja que elegiste. Trabajo con garantía de 30 días.',
+  '¡Hola! Estoy cerca de tu zona. Si te sirve paso en la franja que elegiste. Podemos acordar el alcance del trabajo antes de contratar.',
   'Hola {n}, lo puedo ver hoy mismo. Si hace falta algún repuesto te aviso antes de comprarlo.',
 ];
 
@@ -485,11 +485,11 @@ function scheduleAutoApplications(req) {
 function suggestedPrice(req) {
   const r = rubro(req.rubroId);
   const base = req.presupuestoRef || (r.precio[0] + r.precio[1]) / 2 * 0.8;
-  return round500(base * rnd(0.88, 1.18) * (req.urgente ? 1.15 : 1));
+  return round500(base * rnd(0.88, 1.18));
 }
 
 function doApply(p, req, { precio, mensaje, fecha, franja }, auto = false) {
-  if (!['abierta', 'con_postulaciones'].includes(req.estado)) throw new AppError('Esta changa ya no recibe postulaciones.');
+  if (!['abierta', 'abierta'].includes(req.estado)) throw new AppError('Esta changa ya no recibe postulaciones.');
   const existing = db.applications.find((a) => a.requestId === req.id && a.providerId === p.id && a.estado === 'activa');
   const cliente = user(req.clienteId);
   if (existing) {
@@ -505,7 +505,7 @@ function doApply(p, req, { precio, mensaje, fecha, franja }, auto = false) {
   };
   db.applications.push(a);
   transition('request', req, 'postular');
-  if (req.historial.length === 1) req.historial.push({ estado: 'con_postulaciones', t: now(), texto: 'Llegó la primera postulación' });
+  if (req.historial.length === 1) req.historial.push({ estado: 'abierta', t: now(), texto: 'Llegó la primera postulación' });
   notify(req.clienteId, 'cliente', `Nueva postulación · ${shortName(user(p.userId))}`, `$ ${precio.toLocaleString('es-AR')} · a ${a.distanciaKm} km · ${rubro(req.rubroId).nombre}`, `/changa/${req.id}`, 'app');
   audit({ id: p.userId, rol: 'prestador' }, 'postulacion.creada', 'solicitud', req.id, `$ ${precio}`);
   return a;
@@ -518,6 +518,7 @@ export function applyToJob(pid, reqId, data) {
     if (!chk.ok) throw new AppError(chk.reason);
     if (!canWorkRubro(p, request(reqId).rubroId)) throw new AppError('No tenés habilitado este rubro. Revisá tu matrícula.');
     if (!(data.precio > 0)) throw new AppError('Ingresá un precio.');
+    if (!data.mensaje?.trim()) throw new AppError('Ingresá un mensaje para el cliente.');
     return doApply(p, request(reqId), data);
   });
 }
@@ -538,7 +539,7 @@ export function cancelRequest(reqId, clientId, motivo) {
 
 export function openJobsFor(p) {
   return db.requests
-    .filter((r) => ['abierta', 'con_postulaciones'].includes(r.estado) && p.rubros.includes(r.rubroId) && r.clienteId !== p.userId)
+    .filter((r) => ['abierta', 'abierta'].includes(r.estado) && p.rubros.includes(r.rubroId) && r.clienteId !== p.userId)
     .map((r) => ({ r, km: distKm(p, r.direccion), mine: db.applications.find((a) => a.requestId === r.id && a.providerId === p.id && a.estado === 'activa') }))
     .sort((a, b) => (b.r.urgente - a.r.urgente) || a.km - b.km);
 }
@@ -546,7 +547,7 @@ export function openJobsFor(p) {
 /* ───────────── órdenes ───────────── */
 
 function slotTaken(pid, fecha, franja, exceptId) {
-  return db.orders.some((o) => o.providerId === pid && o.id !== exceptId && o.fecha === fecha && o.franja === franja && ['confirmada', 'en_camino', 'en_curso'].includes(o.estado));
+  return db.orders.some((o) => o.providerId === pid && o.id !== exceptId && o.fecha === fecha && o.franja === franja && o.estado === 'confirmada');
 }
 
 function createOrder({ origen, req, app, clienteId, providerId, rubroId, descripcion, direccion, fecha, franja, asap, precio, medio }) {
@@ -556,7 +557,7 @@ function createOrder({ origen, req, app, clienteId, providerId, rubroId, descrip
   const o = {
     id: nextId('ORD'), origen, requestId: req?.id || null, applicationId: app?.id || null, clienteId, providerId, rubroId, descripcion,
     direccion, fecha, franja, asap: !!asap, precioAcordado: precio, montoFinal: null, comisionPct: db.config.comisiones[rubroId],
-    medio, estado: 'pendiente_confirmacion', codigo: String(Math.floor(1000 + Math.random() * 9000)), intentosCodigo: 0,
+    medio, estado: 'pendiente_confirmacion', ejecutada: false,
     confirmarAntesDe: now() + db.config.plazoConfirmacionMin * 60000, tracking: null, cancelacion: null, garantia: false,
     timeline: [{ estado: 'pendiente_confirmacion', t: now(), actor: shortName(user(clienteId)), texto: 'Orden creada' }],
     calificoCliente: false, calificoPrestador: false, disputaId: null, live: true, autoAt: now() + 6000, creadoEn: now(), actualizado: now(),
@@ -571,7 +572,7 @@ export function hireApplication(clientId, appId, medio) {
   return mutate(() => {
     const a = application(appId);
     const req = request(a.requestId);
-    if (!['abierta', 'con_postulaciones'].includes(req.estado)) throw new AppError('Esta changa ya tiene un prestador asignado.');
+    if (!['abierta', 'abierta'].includes(req.estado)) throw new AppError('Esta changa ya tiene un prestador asignado.');
     const o = createOrder({
       origen: 'postulacion', req, app: a, clienteId: clientId, providerId: a.providerId, rubroId: req.rubroId, descripcion: req.descripcion,
       direccion: req.direccion, fecha: a.fecha, franja: a.franja, asap: req.cuando.tipo === 'asap', precio: a.precio, medio: medio || req.medioPrevisto,
@@ -590,11 +591,12 @@ export function hireDirect(clientId, providerId, data) {
 
 export function ordersOfClient(uid) { return db.orders.filter((o) => o.clienteId === uid).sort((a, b) => b.creadoEn - a.creadoEn); }
 export function ordersOfProvider(pid) { return db.orders.filter((o) => o.providerId === pid).sort((a, b) => b.creadoEn - a.creadoEn); }
-export const ACTIVE = ['pendiente_confirmacion', 'confirmada', 'en_camino', 'en_curso', 'finalizada_pend_cliente', 'en_disputa'];
+export const ACTIVE = ['pendiente_confirmacion', 'confirmada', 'en_revision'];
 
 export function acceptOrder(orderId, actor) {
   return mutate(() => {
     const o = order(orderId);
+    if (actor.rol !== 'prestador' || actor.id !== provider(o.providerId).userId) throw new AppError('Solo el prestador asignado puede confirmar.');
     if (!o.asap && slotTaken(o.providerId, o.fecha, o.franja, o.id)) throw new AppError('Ya tenés otra orden confirmada en esa franja.');
     orderStep(o, 'aceptar', actor, 'El prestador confirmó la orden');
     notify(o.clienteId, 'cliente', `${shortName(user(provider(o.providerId).userId))} confirmó tu orden`, `${o.id} · ${o.asap ? 'Sale en unos minutos' : 'Queda agendada'}`, `/orden/${o.id}`, 'order');
@@ -605,6 +607,7 @@ export function acceptOrder(orderId, actor) {
 export function rejectOrder(orderId, actor, motivo) {
   return mutate(() => {
     const o = order(orderId);
+    if (actor.rol !== 'prestador' || actor.id !== provider(o.providerId).userId || !motivo?.trim()) throw new AppError('Solo el prestador asignado puede rechazar indicando el motivo.');
     orderStep(o, 'rechazar', actor, `Rechazada: ${motivo}`);
     reopenRequest(o, 'rechazada');
     notify(o.clienteId, 'cliente', 'El prestador no puede tomar la orden', `${motivo}. Tu changa volvió a recibir postulaciones.`, o.requestId ? `/changa/${o.requestId}` : `/orden/${o.id}`, 'warn');
@@ -617,7 +620,7 @@ function reopenRequest(o, appEstado) {
   const r = request(o.requestId);
   if (r.estado === 'asignada') {
     transition('request', r, 'reabrir');
-    r.historial.push({ estado: 'con_postulaciones', t: now(), texto: 'Volvió a recibir postulaciones' });
+    r.historial.push({ estado: 'abierta', t: now(), texto: 'Volvió a recibir postulaciones' });
   }
   const a = application(o.applicationId);
   if (a) a.estado = appEstado;
@@ -625,7 +628,6 @@ function reopenRequest(o, appEstado) {
 
 /** Cancelación tardía: prestador ya en camino o faltan menos de 2 h para la franja. */
 export function isLateCancel(o) {
-  if (o.estado === 'en_camino') return true;
   if (o.asap) return o.estado === 'confirmada';
   const start = franjaStart(o.fecha, o.franja);
   return start - now() < 2 * 3600000;
@@ -640,6 +642,8 @@ export function franjaStart(fecha, franja) {
 export function cancelOrder(orderId, actor, motivo) {
   return mutate(() => {
     const o = order(orderId);
+    if (!motivo?.trim() || !((actor.rol === 'cliente' && actor.id === o.clienteId) || (actor.rol === 'prestador' && actor.id === provider(o.providerId).userId))) throw new AppError('La cancelación requiere un participante y un motivo.');
+    if (o.ejecutada) throw new AppError('El servicio ya fue ejecutado: usá el canal de reportes.');
     const tardia = isLateCancel(o);
     orderStep(o, 'cancelar', actor, `Cancelada${tardia ? ' (tardía)' : ''}: ${motivo}`);
     o.cancelacion = { actor: actor.rol, motivo, tardia, t: now() };
@@ -658,42 +662,15 @@ export function cancelOrder(orderId, actor, motivo) {
   });
 }
 
-export function startTrip(orderId, actor) {
-  return mutate(() => {
-    const o = order(orderId);
-    orderStep(o, 'salir', actor, 'Salió hacia el domicilio');
-    const p = provider(o.providerId);
-    const km = distKm(p, o.direccion);
-    o.tracking = { x: p.x, y: p.y, fromX: p.x, fromY: p.y, km0: km, eta: etaMin(km), arrived: false };
-    notify(o.clienteId, 'cliente', `${shortName(user(p.userId))} está en camino`, `Llega en ${etaMin(km)} min. Tené a mano tu código de inicio.`, `/orden/${o.id}`, 'order');
-    audit(actor, 'orden.en_camino', 'orden', o.id);
-  });
-}
-
-export function enterCode(orderId, code, actor) {
-  return mutate(() => {
-    const o = order(orderId);
-    if (o.estado !== 'en_camino') throw new AppError('La orden no está en camino.');
-    if (o.intentosCodigo >= 3) throw new AppError('Superaste los intentos. Soporte ya fue notificado y te va a contactar.');
-    if (String(code) !== o.codigo) {
-      o.intentosCodigo++;
-      if (o.intentosCodigo >= 3) { notifyAdmin('Código de inicio fallido 3 veces', `${o.id} — posible intento de fraude`, `/ordenes/${o.id}`); audit(actor, 'orden.codigo_bloqueado', 'orden', o.id); }
-      return { ok: false, restantes: 3 - o.intentosCodigo };
-    }
-    orderStep(o, 'codigo_ok', actor, 'Código verificado · trabajo iniciado');
-    if (o.tracking) { o.tracking.arrived = true; o.tracking.x = o.direccion.x; o.tracking.y = o.direccion.y; o.tracking.eta = 0; }
-    notify(o.clienteId, 'cliente', 'Trabajo iniciado', `El código coincidió. ${o.id} está en curso.`, `/orden/${o.id}`, 'order');
-    audit(actor, 'orden.iniciada', 'orden', o.id);
-    return { ok: true };
-  });
-}
-
 export function finishOrder(orderId, monto, actor) {
   return mutate(() => {
     const o = order(orderId);
     if (!(monto > 0)) throw new AppError('Ingresá el monto final.');
+    if (actor.id !== provider(o.providerId).userId || actor.rol !== 'prestador') throw new AppError('Solo el prestador asignado informa el cobro.');
+    if (o.ejecutada) throw new AppError('Ya informaste la finalización.');
     orderStep(o, 'finalizar', actor, `Trabajo finalizado · monto informado $ ${monto.toLocaleString('es-AR')}`);
     o.montoFinal = monto;
+    o.ejecutada = true;
     const pay = paymentOf(o.id) || { id: nextId('PAG'), orderId: o.id, historial: [] };
     Object.assign(pay, { medio: o.medio, monto, comision: Math.round(monto * o.comisionPct / 100), estado: 'pendiente' });
     pay.historial.push({ estado: 'pendiente', t: now() });
@@ -714,7 +691,7 @@ function payStep(pay, evento, texto) {
 /** Impacto contable al acreditar: efectivo → deuda de comisión; digital → comisión deducida. */
 function onCredited(o, pay, actor) {
   const p = provider(o.providerId);
-  o.garantia = pay.medio !== 'efectivo';
+  // Registrar el pago no crea una garantía comercial ni un seguro.
   db.ledger.push({ id: nextId('MOV'), providerId: p.id, orderId: o.id, tipo: 'ingreso', monto: pay.monto, t: now(), detalle: `${o.id} · ${MEDIOS[pay.medio].label}` });
   if (pay.medio === 'efectivo') {
     db.ledger.push({ id: nextId('MOV'), providerId: p.id, orderId: o.id, tipo: 'deuda_efectivo', monto: pay.comision, t: now(), detalle: `Comisión ${o.comisionPct}% a saldar · ${o.id}` });
@@ -723,7 +700,7 @@ function onCredited(o, pay, actor) {
   } else {
     db.ledger.push({ id: nextId('MOV'), providerId: p.id, orderId: o.id, tipo: 'comision_deducida', monto: -pay.comision, t: now(), detalle: `Comisión ${o.comisionPct}% deducida · ${o.id}` });
   }
-  if (o.estado === 'finalizada_pend_cliente') orderStep(o, 'confirmar', actor, `Pago acreditado · ${MEDIOS[pay.medio].label}`);
+  if (o.estado === 'confirmada' && o.ejecutada) orderStep(o, 'confirmar', actor, `Pago acreditado · ${MEDIOS[pay.medio].label}`);
   notify(p.userId, 'prestador', `Pago acreditado · ${o.id}`, `$ ${pay.monto.toLocaleString('es-AR')} (${MEDIOS[pay.medio].label}). Calificá a ${shortName(user(o.clienteId))}.`, `/orden/${o.id}`, 'pay');
   notify(o.clienteId, 'cliente', '¿Cómo te fue?', `Calificá a ${shortName(user(p.userId))}: tu reseña ayuda a otros vecinos.`, `/calificar/${o.id}`, 'review');
   audit(actor, 'pago.acreditado', 'pago', pay.id, `${MEDIOS[pay.medio].label} · $ ${pay.monto}`);
@@ -743,6 +720,7 @@ export function confirmCash(orderId, actor) {
   return mutate(() => {
     const o = order(orderId);
     const pay = paymentOf(orderId);
+    if (!o || actor.id !== o.clienteId || actor.rol !== 'cliente' || o.estado !== 'confirmada' || !o.ejecutada || pay?.medio !== 'efectivo') throw new AppError('No corresponde confirmar este pago en efectivo.');
     payStep(pay, 'efectivo_ok', 'El cliente confirmó el pago en efectivo');
     onCredited(o, pay, actor);
   });
@@ -815,7 +793,7 @@ export function submitReview(orderId, authorId, { estrellas, tags = [], comentar
   return mutate(() => {
     const o = order(orderId);
     const p = provider(o.providerId);
-    if (!['finalizada', 'calificada', 'resuelta'].includes(o.estado)) throw new AppError('Solo se puede calificar una orden finalizada.');
+    if (o.estado !== 'finalizada') throw new AppError('Solo se puede calificar una orden finalizada.');
     const esCliente = authorId === o.clienteId;
     const esPrest = authorId === p.userId;
     if (!esCliente && !esPrest) throw new AppError('Solo quien participó de la orden puede calificar.');
@@ -827,7 +805,7 @@ export function submitReview(orderId, authorId, { estrellas, tags = [], comentar
     };
     db.reviews.push(rev);
     if (esCliente) o.calificoCliente = true; else o.calificoPrestador = true;
-    if (o.calificoCliente && o.calificoPrestador && o.estado === 'finalizada') orderStep(o, 'calificar', SYS, 'Ambas partes calificaron');
+    // La reseña es información de la orden finalizada, no un estado de orden nuevo.
     notify(rev.destId, esCliente ? 'prestador' : 'cliente', `Recibiste una calificación de ${estrellas} ★`, comentario ? `“${comentario.slice(0, 80)}”` : `${o.id}`, esCliente ? '/reputacion' : '/perfil', 'review');
     audit({ id: authorId, rol: esCliente ? 'cliente' : 'prestador' }, 'resena.creada', 'orden', o.id, `${estrellas}★`);
     return rev;
@@ -882,20 +860,17 @@ export function resolveDispute(disputeId, { favor, montoAjustado, penalizar, not
     if (d.estado === 'resuelta') throw new AppError('La disputa ya fue resuelta.');
     const o = order(d.orderId);
     d.estado = 'resuelta';
-    d.resolucion = { favor, montoAjustado, penalizar, nota, t: now() };
+    d.resolucion = { favor, montoAjustado, penalizar: false, nota, t: now() };
     orderStep(o, 'resolver', actor, `Resuelta a favor de ${favor}${montoAjustado != null ? ` · monto $ ${montoAjustado.toLocaleString('es-AR')}` : ''}`);
     const pay = paymentOf(o.id);
-    if (montoAjustado != null) {
+    if (montoAjustado != null && pay && pay.estado !== 'acreditado') {
       o.montoFinal = montoAjustado;
-      if (pay && pay.estado !== 'acreditado') {
-        pay.monto = montoAjustado; pay.comision = Math.round(montoAjustado * o.comisionPct / 100);
-        pay.estado = 'acreditado'; pay.historial.push({ estado: 'acreditado', t: now(), texto: 'Acreditado por resolución de disputa' });
-        onCredited(o, pay, actor);
-      } else if (pay) {
-        db.ledger.push({ id: nextId('MOV'), providerId: o.providerId, orderId: o.id, tipo: 'ajuste_disputa', monto: montoAjustado - pay.monto, t: now(), detalle: `Ajuste por ${d.id}` });
-      }
+      pay.monto = montoAjustado; pay.comision = Math.round(montoAjustado * o.comisionPct / 100);
+      pay.estado = 'pendiente';
+      pay.historial.push({ estado: 'pendiente', t: now(), texto: 'Monto revisado; falta registrar el pago' });
     }
-    if (penalizar) provider(o.providerId).penalizacion = (provider(o.providerId).penalizacion || 0) + 1;
+    if (pay?.estado === 'acreditado') o.estado = 'finalizada';
+    // No se aplica un score: su fórmula no está especificada en el documento.
     const txt = `Resolución: a favor de ${favor}. ${nota || ''}`;
     notify(o.clienteId, 'cliente', `Resolvimos el reporte de ${o.id}`, txt, `/orden/${o.id}`, 'ok');
     notify(provider(o.providerId).userId, 'prestador', `Resolvimos el reporte de ${o.id}`, txt, `/orden/${o.id}`, 'ok');
@@ -973,7 +948,7 @@ function autoReply(texto, rol) {
     if (/lleg|tard|d[oó]nde|demor/.test(t)) return 'Estoy saliendo, te voy avisando. Lo ves en el mapa de la app.';
     if (/foto|imagen/.test(t)) return 'Sí, con la foto que subiste me doy una idea. Llevo lo necesario.';
     if (/gracias/.test(t)) return '¡De nada! Cualquier cosa escribime por acá.';
-    if (/wsp|whats|cel|n[uú]mero|tel/.test(t)) return 'Mejor sigamos por acá así queda todo registrado y tenemos la garantía de Royal.';
+    if (/wsp|whats|cel|n[uú]mero|tel/.test(t)) return 'Mejor sigamos por acá así queda todo registrado y podemos consultar lo acordado.';
     return 'Perfecto, quedo atento. Cualquier cosa me escribís por acá.';
   }
   if (/lleg|estoy|abajo|puerta/.test(t)) return 'Dale, ya bajo a abrirte.';
@@ -1027,10 +1002,11 @@ export function saveProviderDraft(userId, data) {
 
 export function uploadDoc(pid, { tipo, rubroId = null, archivo = null, numero = '', entidad = '', vence = null, mime = 'image/svg+xml', kb = 40, simulado = false }) {
   return mutate(() => {
-    const okMime = /^image\/|application\/pdf/.test(mime);
+    const okMime = ['image/jpeg', 'image/png', 'application/pdf'].includes(mime) || (simulado && mime === 'image/svg+xml');
     if (!okMime) throw new AppError('Formato no admitido. Subí JPG, PNG o PDF.');
     if (kb > 5120) throw new AppError('El archivo supera los 5 MB.');
     if (tipo === 'matricula' && !numero) throw new AppError('Ingresá el número de matrícula.');
+    if (tipo === 'matricula' && (!entidad.trim() || !vence || vence <= now())) throw new AppError('Completá entidad emisora y vencimiento vigente.');
     const p = provider(pid);
     const doc = { id: nextId('DOC'), providerId: pid, tipo, rubroId, estado: 'cargado', archivo, simulado, numero, entidad, vence, mime, kb, motivo: null, creadoEn: now() };
     // Si el prestador ya está aprobado (recarga por vencimiento), el doc va directo a revisión.
@@ -1203,11 +1179,6 @@ export function tick() {
       audit(SYS, 'orden.vencida', 'orden', o.id); mark();
     });
 
-    // 3) solicitudes vencidas
-    db.requests.filter((r) => ['abierta', 'con_postulaciones'].includes(r.estado) && r.venceEn < t).forEach((r) => {
-      transition('request', r, 'vencer'); r.historial.push({ estado: 'vencida', t, texto: 'Venció sin contratación' }); mark();
-    });
-
     // 4) documentos vencidos
     db.documents.filter((d) => d.estado === 'aprobado' && d.vence && d.vence < t).forEach((d) => {
       transition('document', d, 'vencer');
@@ -1217,33 +1188,11 @@ export function tick() {
       audit(SYS, 'documento.vencido', 'documento', d.id); mark();
     });
 
-    // 5) seguimiento del prestador en camino
-    db.orders.filter((o) => o.estado === 'en_camino' && o.tracking && !o.tracking.arrived).forEach((o) => {
-      const tr = o.tracking;
-      const dx = o.direccion.x - tr.x, dy = o.direccion.y - tr.y;
-      const d = Math.hypot(dx, dy);
-      const step = Math.max(0.12, Math.hypot(o.direccion.x - tr.fromX, o.direccion.y - tr.fromY) / 14);
-      if (d <= step) {
-        tr.x = o.direccion.x; tr.y = o.direccion.y; tr.eta = 0; tr.arrived = true;
-        notify(o.clienteId, 'cliente', 'Tu prestador llegó', 'Dictale tu código de 4 dígitos para iniciar el trabajo.', `/orden/${o.id}`, 'order');
-        o.autoAt = t + 5000;
-      } else {
-        tr.x += (dx / d) * step; tr.y += (dy / d) * step; tr.eta = etaMin(d * 1.3 - step * 1.3);
-      }
-      mark();
-    });
-
     // 6) typing expirado
     Object.keys(db.typing).forEach((k) => { if (db.typing[k].until < t) { delete db.typing[k]; mark(); } });
 
     // 7) piloto automático para la parte que no tiene la app abierta
-    if (autopilot(t)) mark();
-
-    // 8) plazo de calificación
-    const plazo = db.config.plazoCalificacionDias * 86400000;
-    db.orders.filter((o) => o.estado === 'finalizada' && o.actualizado + plazo < t && (o.calificoCliente || o.calificoPrestador)).forEach((o) => {
-      orderStep(o, 'calificar', SYS, 'Cerró el plazo de calificación'); mark();
-    });
+    // Las decisiones de aceptar, pagar y calificar siempre se realizan manualmente en la demo.
 
     if (changed) persist();
   } finally {
@@ -1256,7 +1205,7 @@ function runJob(j) {
   switch (j.type) {
     case 'auto_apply': {
       const req = request(p.reqId); const pr = provider(p.pid);
-      if (!req || !['abierta', 'con_postulaciones'].includes(req.estado)) return;
+      if (!req || !['abierta', 'abierta'].includes(req.estado)) return;
       if (db.applications.some((a) => a.requestId === req.id && a.providerId === pr.id)) return;
       doApply(pr, req, {
         precio: p.precio || suggestedPrice(req),
@@ -1293,58 +1242,6 @@ function runJob(j) {
     }
     default: break;
   }
-}
-
-/** Avanza órdenes "en vivo" cuando la contraparte no tiene su app abierta, para que la demo funcione con una sola app. */
-function autopilot(t) {
-  let changed = false;
-  db.orders.filter((o) => o.live && o.autoAt && o.autoAt <= t).forEach((o) => {
-    const p = provider(o.providerId);
-    const provAway = !isPresent('prestador', p.userId);
-    const cliAway = !isPresent('cliente', o.clienteId);
-    const PA = { id: p.userId, rol: 'prestador' };
-    const CA = { id: o.clienteId, rol: 'cliente' };
-    try {
-      if (provAway && o.estado === 'pendiente_confirmacion') {
-        orderStep(o, 'aceptar', PA, 'El prestador confirmó la orden');
-        notify(o.clienteId, 'cliente', `${shortName(user(p.userId))} confirmó tu orden`, o.id, `/orden/${o.id}`, 'order');
-        audit(PA, 'orden.confirmada', 'orden', o.id); changed = true;
-      } else if (provAway && o.estado === 'confirmada' && (o.asap || o.fecha === isoDate(t))) {
-        const km = distKm(p, o.direccion);
-        orderStep(o, 'salir', PA, 'Salió hacia el domicilio');
-        o.tracking = { x: p.x, y: p.y, fromX: p.x, fromY: p.y, km0: km, eta: etaMin(km), arrived: false };
-        notify(o.clienteId, 'cliente', `${shortName(user(p.userId))} está en camino`, `Llega en ${etaMin(km)} min.`, `/orden/${o.id}`, 'order');
-        audit(PA, 'orden.en_camino', 'orden', o.id); changed = true;
-      } else if (provAway && o.estado === 'en_camino' && o.tracking?.arrived) {
-        orderStep(o, 'codigo_ok', PA, 'Código verificado · trabajo iniciado');
-        notify(o.clienteId, 'cliente', 'Trabajo iniciado', `${shortName(user(p.userId))} ingresó tu código.`, `/orden/${o.id}`, 'order');
-        audit(PA, 'orden.iniciada', 'orden', o.id);
-        o.autoAt = t + 12000; changed = true;
-      } else if (provAway && o.estado === 'en_curso') {
-        o.montoFinal = o.precioAcordado;
-        orderStep(o, 'finalizar', PA, `Trabajo finalizado · monto informado $ ${o.precioAcordado.toLocaleString('es-AR')}`);
-        const pay = { id: nextId('PAG'), orderId: o.id, medio: o.medio, monto: o.precioAcordado, comision: Math.round(o.precioAcordado * o.comisionPct / 100), estado: 'pendiente', historial: [{ estado: 'pendiente', t }] };
-        db.payments.push(pay);
-        notify(o.clienteId, 'cliente', 'Trabajo terminado', `Confirmá el pago de $ ${pay.monto.toLocaleString('es-AR')}.`, `/pago/${o.id}`, 'pay');
-        audit(PA, 'orden.finalizada_prestador', 'orden', o.id); changed = true;
-      } else if (cliAway && o.estado === 'finalizada_pend_cliente') {
-        const pay = paymentOf(o.id);
-        if (pay?.estado === 'pendiente') {
-          if (pay.medio === 'efectivo') payStep(pay, 'efectivo_ok', 'El cliente confirmó el pago en efectivo');
-          else if (pay.medio === 'transferencia') { payStep(pay, 'comprobante', 'Comprobante adjuntado'); payStep(pay, 'acreditar', 'Transferencia acreditada'); }
-          else payStep(pay, 'aprobado', 'Pago aprobado');
-          onCredited(o, pay, CA); changed = true;
-        }
-      } else if (o.estado === 'finalizada' && ((cliAway && !o.calificoCliente) || (provAway && !o.calificoPrestador))) {
-        const esCli = cliAway && !o.calificoCliente;
-        db.reviews.push({ id: nextId('REV'), orderId: o.id, autorId: esCli ? o.clienteId : p.userId, destId: esCli ? p.userId : o.clienteId, dir: esCli ? 'c2p' : 'p2c', estrellas: 5, tags: esCli ? ['Puntual', 'Prolijo'] : ['Buena predisposición'], comentario: esCli ? 'Llegó en horario y dejó todo limpio. Recomendable.' : 'Muy amable, todo claro.', rubroId: o.rubroId, t, estado: 'publicada' });
-        if (esCli) o.calificoCliente = true; else o.calificoPrestador = true;
-        if (o.calificoCliente && o.calificoPrestador) orderStep(o, 'calificar', SYS, 'Ambas partes calificaron');
-        o.autoAt = t + 6000; changed = true;
-      }
-    } catch (e) { console.warn('autopilot', o.id, e.message); o.autoAt = t + 10000; }
-  });
-  return changed;
 }
 
 export function isoDate(ts) { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
@@ -1395,27 +1292,15 @@ export function simulate(type) {
     const liveOrders = db.orders.filter((o) => o.live).sort((a, b) => b.creadoEn - a.creadoEn);
     switch (type) {
       case 'postulacion': {
-        const req = db.requests.filter((r) => ['abierta', 'con_postulaciones'].includes(r.estado)).sort((a, b) => b.creadoEn - a.creadoEn)[0];
+        const req = db.requests.filter((r) => ['abierta', 'abierta'].includes(r.estado)).sort((a, b) => b.creadoEn - a.creadoEn)[0];
         if (!req) throw new AppError('No hay changas abiertas.');
         const cand = db.providers.find((p) => p.estado === 'aprobado' && canWorkRubro(p, req.rubroId) && !db.applications.some((a) => a.requestId === req.id && a.providerId === p.id));
         if (!cand) throw new AppError('No quedan prestadores de ese rubro para postular.');
         schedule(0, 'auto_apply', { reqId: req.id, pid: cand.id });
         return `Postulación de ${shortName(user(cand.userId))} en ${req.id}`;
       }
-      case 'en_camino': {
-        const o = liveOrders.find((x) => ['pendiente_confirmacion', 'confirmada'].includes(x.estado)) || db.orders.find((x) => x.estado === 'confirmada');
-        if (!o) throw new AppError('No hay órdenes confirmadas.');
-        const p = provider(o.providerId); const PA = { id: p.userId, rol: 'prestador' };
-        if (o.estado === 'pendiente_confirmacion') orderStep(o, 'aceptar', PA, 'El prestador confirmó la orden');
-        orderStep(o, 'salir', PA, 'Salió hacia el domicilio');
-        const km = distKm(p, o.direccion);
-        o.tracking = { x: p.x, y: p.y, fromX: p.x, fromY: p.y, km0: km, eta: etaMin(km), arrived: false };
-        o.live = true;
-        notify(o.clienteId, 'cliente', `${shortName(user(p.userId))} está en camino`, `Llega en ${etaMin(km)} min.`, `/orden/${o.id}`, 'order');
-        return `${o.id} en camino`;
-      }
       case 'pago': {
-        const o = db.orders.find((x) => x.estado === 'finalizada_pend_cliente');
+        const o = db.orders.find((x) => x.estado === 'confirmada' && x.ejecutada);
         if (!o) throw new AppError('No hay órdenes esperando pago.');
         const pay = paymentOf(o.id);
         if (pay.medio === 'efectivo') payStep(pay, 'efectivo_ok', 'El cliente confirmó el pago en efectivo');

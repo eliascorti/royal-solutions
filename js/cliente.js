@@ -31,7 +31,7 @@ function providerCard(x, extra = '') {
     <div class="grow">
       <div class="row between"><span class="strong">${esc(u.nombre)} ${esc(u.apellido)}</span>${rating(st.rating.avg, st.rating.count)}</div>
       <div class="small muted">${p.rubros.map((r) => esc(S.rubro(r).nombre)).join(' · ')}</div>
-      <div class="meta">${km != null ? `<span class="mono">${km} km</span>` : ''}<span>${plural(st.trabajos, 'trabajo')}</span><span>Responde en ~${p.respuestaMin} min</span>${p.disponible ? '<span class="badge ok">Disponible ahora</span>' : ''}</div>
+      <div class="meta">${km != null ? `<span class="mono">${km} km</span>` : ''}<span>${plural(st.trabajos, 'trabajo')}</span>${p.disponible ? '<span class="badge ok">Disponible ahora</span>' : ''}</div>
       ${extra}
     </div></button>`;
 }
@@ -55,11 +55,8 @@ function activeBanner(ctx) {
   const pu = S.user(S.provider(o.providerId).userId);
   const sub = {
     pendiente_confirmacion: `Esperando que ${pu.nombre} confirme`,
-    confirmada: o.asap ? `${pu.nombre} sale en unos minutos` : `${fmtDay(o.fecha)} · ${FRANJAS[o.franja]}`,
-    en_camino: o.tracking?.arrived ? `${pu.nombre} llegó · dictale tu código` : `Llega en ${o.tracking?.eta ?? '—'} min`,
-    en_curso: 'Trabajo en curso',
-    finalizada_pend_cliente: `Confirmá el pago de ${money(o.montoFinal)}`,
-    en_disputa: 'Royal está revisando el caso',
+    confirmada: o.ejecutada ? `Confirmá el pago de ${money(o.montoFinal)}` : `${fmtDay(o.fecha)} · ${FRANJAS[o.franja]}`,
+    en_revision: 'Royal está revisando el caso',
   }[o.estado];
   return `<button class="active-order" data-go="/orden/${o.id}"><div class="row between"><span class="upper">Orden en curso · <span class="mono">${o.id}</span></span>${statusBadge('order', o.estado, L)}</div>
     <div class="row" style="margin-top:6px">${rubroIcon(o.rubroId)}<div class="grow"><div class="strong">${esc(sub)}</div><div class="small muted ellipsis">${esc(o.descripcion)}</div></div>${icon('right', 'sm')}</div></button>`;
@@ -72,8 +69,8 @@ const inicio = {
     const u = ctx.user;
     const loc = origin(ctx);
     const cerca = S.searchProviders({ from: loc, sort: 'distancia' }).slice(0, 5);
-    const openReqs = S.requestsOfClient(u.id).filter((r) => ['abierta', 'con_postulaciones'].includes(r.estado));
-    const past = [...new Map(S.ordersOfClient(u.id).filter((o) => ['finalizada', 'calificada'].includes(o.estado)).map((o) => [o.providerId, o])).values()].slice(0, 4);
+    const openReqs = S.requestsOfClient(u.id).filter((r) => ['abierta'].includes(r.estado));
+    const past = [...new Map(S.ordersOfClient(u.id).filter((o) => ['finalizada'].includes(o.estado)).map((o) => [o.providerId, o])).values()].slice(0, 4);
     return `<div class="stack">
       <div><div class="hello">Hola, ${esc(u.nombre)}</div><div class="small muted row gap-1">${icon('pin', 'sm')}${esc(S.barrio(loc.barrio).nombre)} · ${esc(loc.calle)}</div></div>
       ${activeBanner(ctx)}
@@ -90,14 +87,14 @@ const inicio = {
 };
 
 /* ───────────── Buscar ───────────── */
-const buscarState = { q: '', rubro: null, maxKm: null, minRating: 0, verificado: false, disponible: false, sort: 'distancia', vista: 'lista', sel: null, originId: null };
+const buscarState = { q: '', rubro: null, maxKm: null, minRating: 0, tag: '', sort: 'distancia', vista: 'lista', sel: null, originId: null };
 const buscar = {
   tab: '/buscar', title: 'Buscar', live: false,
   render(ctx) {
     if (ctx.query.rubro) buscarState.rubro = ctx.query.rubro;
     if (ctx.query.vista) buscarState.vista = ctx.query.vista;
     const st = buscarState;
-    const active = [st.maxKm, st.minRating, st.verificado, st.disponible].filter(Boolean).length;
+    const active = [st.maxKm, st.minRating, st.tag].filter(Boolean).length;
     return `<div class="stack">
       <div class="row"><div class="grow"><label class="sr-only" for="q">Buscar</label><input class="input" id="q" type="search" placeholder="Oficio, nombre o problema" value="${esc(st.q)}" autocomplete="off"></div>
       <button class="btn icon" data-act="filters" aria-label="Filtros">${icon('sliders')}${active ? `<span class="count" style="position:absolute;top:-6px;right:-6px">${active}</span>` : ''}</button></div>
@@ -118,7 +115,7 @@ const buscar = {
     draw();
   },
   actions: {
-    rubro: (b, e, ctx) => { buscarState.rubro = b.dataset.id || null; qsa('#rchips .chip').forEach((c) => c.classList.toggle('on', c === b)); drawResults(qs('.view'), ctx); },
+    rubro: (b, e, ctx) => { buscarState.rubro = b.dataset.id || null; buscarState.tag = '';  qsa('#rchips .chip').forEach((c) => c.classList.toggle('on', c === b)); drawResults(qs('.view'), ctx); },
     vista: (b, e, ctx) => { buscarState.vista = b.dataset.v; qsa('.seg button').forEach((c) => c.classList.toggle('on', c === b)); drawResults(qs('.view'), ctx); },
     pin: (b, e, ctx) => { buscarState.sel = b.dataset.id; drawResults(qs('.view'), ctx); },
     clear: (b, e, ctx) => { Object.assign(buscarState, { q: '', rubro: null, maxKm: null, minRating: 0, verificado: false, disponible: false }); ctx.refresh(); },
@@ -129,9 +126,8 @@ const buscar = {
         body: `<div class="stack">
           <div class="field"><span class="label">Distancia máxima</span><div class="seg" id="fk">${[[null, 'Todas'], [2, '2 km'], [5, '5 km'], [8, '8 km']].map(([v, l]) => `<button type="button" data-v="${v ?? ''}" class="${st.maxKm === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
           <div class="field"><span class="label">Calificación mínima</span><div class="seg" id="fr">${[[0, 'Todas'], [4, '4+'], [4.5, '4.5+']].map(([v, l]) => `<button type="button" data-v="${v}" class="${st.minRating === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
-          <label class="check"><input type="checkbox" id="fv" ${st.verificado ? 'checked' : ''}> <span>Solo verificación media o alta (antecedentes / matrícula)</span></label>
-          <label class="check"><input type="checkbox" id="fd" ${st.disponible ? 'checked' : ''}> <span>Disponible ahora</span></label>
-          <div class="field"><label for="fs">Ordenar por</label><select class="select" id="fs">${[['distancia', 'Más cerca'], ['rating', 'Mejor calificados'], ['trabajos', 'Más trabajos'], ['respuesta', 'Responde más rápido']].map(([v, l]) => `<option value="${v}" ${st.sort === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+          <div class="field"><label for="ft">Especialidad / tag</label><select class="select" id="ft"><option value="">Todos los tags</option>${[...new Set((st.rubro ? RUBROS.filter(r=>r.id===st.rubro) : RUBROS).flatMap(r=>r.tags))].map(t=>`<option value="${esc(t)}" ${st.tag===t?'selected':''}>${esc(t)}</option>`).join('')}</select></div>
+          <div class="field"><label for="fs">Ordenar por</label><select class="select" id="fs">${[['distancia','Más cerca'],['rating','Mejor calificados']].map(([v,l])=>`<option value="${v}" ${st.sort===v?'selected':''}>${l}</option>`).join('')}</select></div>
         </div>`,
         footer: '<button class="btn" data-reset>Limpiar</button><button class="btn primary grow" data-apply>Aplicar</button>',
       });
@@ -140,11 +136,11 @@ const buscar = {
       s.el.querySelector('[data-apply]').onclick = () => {
         const k = s.el.querySelector('#fk .on')?.dataset.v; st.maxKm = k ? Number(k) : null;
         st.minRating = Number(s.el.querySelector('#fr .on')?.dataset.v || 0);
-        st.verificado = s.el.querySelector('#fv').checked; st.disponible = s.el.querySelector('#fd').checked;
+        st.tag = s.el.querySelector('#ft').value;
         st.sort = s.el.querySelector('#fs').value;
         s.close(); ctx.refresh();
       };
-      s.el.querySelector('[data-reset]').onclick = () => { Object.assign(st, { maxKm: null, minRating: 0, verificado: false, disponible: false, sort: 'distancia' }); s.close(); ctx.refresh(); };
+      s.el.querySelector('[data-reset]').onclick = () => { Object.assign(st, { maxKm: null, minRating: 0, tag: '', sort: 'distancia' }); s.close(); ctx.refresh(); };
     },
   },
 };
@@ -152,7 +148,7 @@ const buscar = {
 function drawResults(el, ctx) {
   const st = buscarState;
   const from = st.originId ? S.barrio(st.originId) : origin(ctx);
-  const list = S.searchProviders({ q: st.q, rubroId: st.rubro, maxKm: st.maxKm, minRating: st.minRating, verificado: st.verificado, disponible: st.disponible, sort: st.sort, from });
+  const list = S.searchProviders({ q: st.q, rubroId: st.rubro, maxKm: st.maxKm, minRating: st.minRating, tag: st.tag, sort: st.sort, from });
   const box = el.querySelector('#results');
   if (!list.length) {
     const related = st.q ? RUBROS.filter((r) => r.nombre.toLowerCase().includes(st.q.toLowerCase().slice(0, 3)) || r.sugerencias.some((s) => s.toLowerCase().includes(st.q.toLowerCase()))).slice(0, 3) : [];
@@ -192,7 +188,7 @@ const pub1 = {
       <span class="err small" id="rubro-err" style="color:var(--danger)"></span>
       <div class="field"><label for="desc">Contalo en una línea</label><textarea class="textarea" id="desc" maxlength="240" placeholder="Ej.: pierde agua abajo del lavatorio">${esc(draft.descripcion)}</textarea><span class="err" id="desc-err"></span></div>
       <div class="chips wrap" id="sug">${r ? r.sugerencias.map((s) => `<button type="button" class="chip" data-s="${esc(s)}">${esc(s)}</button>`).join('') : '<span class="xs faint">Elegí un rubro para ver sugerencias</span>'}</div>
-      <label class="opt ${draft.urgente ? 'on' : ''}" id="urg"><input type="checkbox" class="sr-only" ${draft.urgente ? 'checked' : ''}>${icon('zap')}<div class="grow"><div class="strong small">Changa urgente</div><div class="xs muted">Se destaca en el feed. Recargo sugerido de ${S.getDb().config.recargoUrgentePct}% para quien va ya.</div></div>${draft.urgente ? '<span class="badge accent">Urgente</span>' : ''}</label>
+      <label class="opt ${draft.urgente ? 'on' : ''}" id="urg"><input type="checkbox" class="sr-only" ${draft.urgente ? 'checked' : ''}>${icon('zap')}<div class="grow"><div class="strong small">Changa urgente</div><div class="xs muted">Indicá la urgencia de tu solicitud. El precio se acuerda con el prestador.</div></div>${draft.urgente ? '<span class="badge accent">Urgente</span>' : ''}</label>
       <div class="field"><span class="label">Fotos (opcional)</span><div class="photos" id="ph">${draft.fotos.map((f, i) => `<div class="ph"><img src="${f}" alt="Foto ${i + 1}"><button type="button" class="btn icon sm" style="position:absolute;top:2px;right:2px;min-height:24px;width:24px;background:var(--surface)" data-rm="${i}" aria-label="Quitar">${icon('x', 'sm')}</button></div>`).join('')}${draft.fotos.length < 3 ? `<label class="add">${icon('camera')}<input type="file" accept="image/*" id="file" class="sr-only" multiple></label>` : ''}</div></div>
     </div>`;
   },
@@ -264,14 +260,15 @@ const pub3 = {
     return `${stepper(3)}<div class="stack">
       <h1>Presupuesto y pago</h1>
       <div class="field"><label for="pres">Presupuesto de referencia (opcional)</label><div class="input-group"><span class="prefix">$</span><input class="input" id="pres" inputmode="numeric" placeholder="30.000" value="${draft.presupuesto ? Number(draft.presupuesto).toLocaleString('es-AR') : ''}"></div>
-      <span class="hint">Referencia en Santa Fe para ${esc(r.nombre.toLowerCase())}: <span class="mono">${money(r.precio[0])} – ${money(r.precio[1])}</span>. Los prestadores te mandan su precio.</span></div>
-      <div class="field"><span class="label">¿Cómo pensás pagar?</span><div class="stack" id="med" style="gap:8px">${['efectivo', 'transferencia', 'mercadopago'].map((m) => `<button type="button" class="opt ${draft.medio === m ? 'on' : ''}" data-v="${m}">${icon(MEDIOS[m].icono)}<div class="grow"><div class="strong small">${MEDIOS[m].label}</div><div class="xs muted">${{ efectivo: 'Le pagás en mano al terminar. Confirmás el monto en la app.', transferencia: 'A la cuenta de Royal. Incluye Garantía Royal.', mercadopago: 'Pago online al terminar. Incluye Garantía Royal.' }[m]}</div></div></button>`).join('')}</div></div>
+      <span class="hint">Importes ficticios de demo para ${esc(r.nombre.toLowerCase())}: <span class="mono">${money(r.precio[0])} – ${money(r.precio[1])}</span>. Los prestadores te mandan su precio.</span></div>
+      <div class="field"><span class="label">¿Cómo pensás pagar?</span><div class="stack" id="med" style="gap:8px">${['efectivo', 'transferencia', 'mercadopago'].map((m) => `<button type="button" class="opt ${draft.medio === m ? 'on' : ''}" data-v="${m}">${icon(MEDIOS[m].icono)}<div class="grow"><div class="strong small">${MEDIOS[m].label}</div><div class="xs muted">${{ efectivo: 'Le pagás en mano al terminar. Confirmás el monto en la app.', transferencia: 'Transferencia simulada; no existe cuenta bancaria operativa.', mercadopago: 'Alcance completo: checkout de ejemplo, sin cobros.' }[m]}</div></div></button>`).join('')}</div></div>
       <div class="banner info">${icon('info')}<div>Vos pagás el precio acordado. La comisión de Royal (${r.comision}%) la paga el prestador.</div></div>
     </div>`;
   },
   cta: () => '<button class="btn" data-act="__back">Atrás</button><button class="btn primary" data-act="next">Ver resumen</button>',
   mount(el) {
     const pres = el.querySelector('#pres');
+    if (!pres) return; // Una entrada directa sin borrador vuelve al paso 1.
     pres.addEventListener('input', () => { const n = pres.value.replace(/\D/g, ''); draft.presupuesto = n; pres.value = n ? Number(n).toLocaleString('es-AR') : ''; });
     el.querySelector('#med').onclick = (e) => { const b = e.target.closest('[data-v]'); if (!b) return; draft.medio = b.dataset.v; qsa('#med .opt').forEach((x) => x.classList.toggle('on', x === b)); };
   },
@@ -326,7 +323,7 @@ const changa = {
     const r = S.request(ctx.params.id);
     if (!r || r.clienteId !== ctx.user.id) return empty('alert', 'Changa no encontrada', '');
     const apps = S.applicationsOf(r.id).filter((a) => a.estado === 'activa' || a.estado === 'aceptada');
-    const open = ['abierta', 'con_postulaciones'].includes(r.estado);
+    const open = ['abierta'].includes(r.estado);
     const rb = S.rubro(r.rubroId);
     const avisados = S.getDb().providers.filter((p) => p.estado === 'aprobado' && S.canWorkRubro(p, r.rubroId) && S.distKm(p, r.direccion) <= 6).length;
     return `<div class="stack">
@@ -382,7 +379,6 @@ const changa = {
           <tr><td class="xs muted">Trabajos</td>${rows.map((x) => cell(x, `<span class="mono">${x.st.trabajos}</span>`)).join('')}</tr>
           <tr><td class="xs muted">Distancia</td>${rows.map((x) => cell(x, `<span class="mono">${x.a.distanciaKm} km</span>`, x === nearest)).join('')}</tr>
           <tr><td class="xs muted">Verificación</td>${rows.map((x) => cell(x, S.NIVEL_LABEL[x.st.verif.nivel].replace('Verificación ', ''))).join('')}</tr>
-          <tr><td class="xs muted">Responde en</td>${rows.map((x) => cell(x, `<span class="mono">~${x.p.respuestaMin} min</span>`)).join('')}</tr>
           <tr><td></td>${rows.map((x) => `<td style="padding:8px 6px"><button class="btn sm primary" data-pick="${x.a.id}">Elegir</button></td>`).join('')}</tr>
         </tbody></table></div><p class="xs faint" style="margin-top:8px"><span class="dot accent" style="display:inline-block"></span> mejor valor en cada fila</p>`,
       });
@@ -443,27 +439,26 @@ const perfilPrestador = {
     const ordersCli = new Map(S.getDb().orders.map((o) => [o.id, o]));
     return `<div class="stack">
       <div class="row top">${avatar(u, 'lg', ['medio', 'alto'].includes(v.nivel))}<div class="grow"><h1>${esc(u.nombre)} ${esc(u.apellido)}</h1><div class="small muted">${p.rubros.map((r) => esc(S.rubro(r).nombre)).join(' · ')}</div><div class="small muted row gap-1">${icon('pin', 'sm')}${esc(S.barrio(p.barrio).nombre)}${km != null ? ` · <span class="mono">${km} km</span>` : ''}</div></div>
-      <button class="btn icon ghost" data-act="fav" aria-label="${fav ? 'Quitar de favoritos' : 'Agregar a favoritos'}" aria-pressed="${fav}" style="color:${fav ? 'var(--accent)' : 'inherit'}">${icon('heart', fav ? 'fill' : '')}</button></div>
+      <button class="btn icon ghost" data-act="fav" title="Alcance completo: favoritos" aria-label="${fav ? 'Quitar de favoritos' : 'Agregar a favoritos'}" aria-pressed="${fav}" style="color:${fav ? 'var(--accent)' : 'inherit'}">${icon('heart', fav ? 'fill' : '')}</button></div>
       ${fav ? '<style>.view [aria-pressed="true"] .ic{fill:currentColor}</style>' : ''}
       ${st.nuevo ? `<div class="banner info">${icon('info')}<div><b>Perfil nuevo.</b> Todavía no tiene trabajos en Royal. Su identidad${v.antecedentes ? ' y antecedentes están verificados' : ' está verificada'}.</div></div>` : ''}
       ${p.disponible ? '<span class="badge ok" style="align-self:flex-start">Disponible ahora</span>' : '<span class="badge" style="align-self:flex-start">No disponible ahora</span>'}
       <div class="stat-grid">
         <div><div class="xs muted">Calificación</div><div class="v">${st.rating.count ? st.rating.avg.toFixed(1) : '—'}</div><div class="xs faint">${plural(st.rating.count, 'reseña verificada', 'reseñas verificadas')}</div></div>
         <div><div class="xs muted">Trabajos en Royal</div><div class="v">${st.trabajos}</div><div class="xs faint">finalizados</div></div>
-        <div><div class="xs muted">Responde en</div><div class="v">~${p.respuestaMin} min</div><div class="xs faint">promedio</div></div>
-        <div><div class="xs muted">Cancelaciones tardías</div><div class="v">${p.cancelacionesTardias}</div><div class="xs faint">últimos 90 días</div></div>
+
+        <div><div class="xs muted">Cancelaciones tardías</div><div class="v">${p.cancelacionesTardias}</div><div class="xs faint">datos de ejemplo</div></div>
       </div>
       <div class="section-title"><h2>Verificación</h2><span class="badge ${v.nivel === 'alto' ? 'ok' : v.nivel === 'medio' ? 'ok' : 'info'}">${S.NIVEL_LABEL[v.nivel]}</span></div>
       <div class="card list">
-        <div class="li">${icon('shield')}<div class="grow"><div class="small strong">Identidad</div><div class="xs muted">DNI frente y dorso + selfie de validación</div></div>${v.identidad ? '<span class="badge ok">Verificado</span>' : '<span class="badge warn">Pendiente</span>'}</div>
-        <div class="li">${icon('file')}<div class="grow"><div class="small strong">Antecedentes penales</div><div class="xs muted">Registro Nacional de Reincidencia</div></div>${v.antecedentes ? '<span class="badge ok">Sin registros</span>' : '<span class="badge">No requerido</span>'}</div>
+        <div class="li">${icon('shield')}<div class="grow"><div class="small strong">Identidad</div><div class="xs muted">DNI y foto simulados · alcance completo</div></div>${v.identidad ? '<span class="badge ok">Verificado</span>' : '<span class="badge warn">Pendiente</span>'}</div>
+        <div class="li">${icon('file')}<div class="grow"><div class="small strong">Antecedentes penales</div><div class="xs muted">Representación ficticia · sin consulta externa</div></div>${v.antecedentes ? '<span class="badge ok">Sin registros</span>' : '<span class="badge">Sin evidencia de demo</span>'}</div>
         ${docMat.map((m) => `<div class="li">${icon('badge')}<div class="grow"><div class="small strong">Matrícula · ${esc(S.rubro(m.rubroId).nombre)}</div><div class="xs muted mono">${esc(m.doc?.numero || '—')} · vence ${m.doc?.vence ? fmtDateY(m.doc.vence) : '—'}</div></div>${m.vigente ? `<span class="badge ${m.porVencer ? 'warn' : 'ok'}">${m.porVencer ? 'Por vencer' : 'Vigente'}</span>` : '<span class="badge danger">No vigente</span>'}</div>`).join('')}
       </div>
       <p class="xs faint">Rubros de riesgo alto (gas, electricidad, aires) exigen matrícula vigente. Riesgo: ${p.rubros.map((r) => `${esc(S.rubro(r).nombre)} ${RIESGO_LABEL[S.rubro(r).riesgo].toLowerCase()}`).join(' · ')}.</p>
       <div class="section-title"><h2>Sobre su trabajo</h2></div>
       <p class="small">${esc(p.descripcion)}</p>
       <div class="chips wrap">${p.tags.map((t) => `<span class="chip" style="cursor:default">${esc(t)}</span>`).join('')}</div>
-      ${p.galeria.length ? `<div class="section-title"><h2>Trabajos realizados</h2></div><div class="gallery">${p.galeria.map((g, i) => galleryTile(g, i)).join('')}</div>` : ''}
       <div class="section-title"><h2>Zona de cobertura</h2></div>
       ${mapSvg({ highlight: p.barrios, pins: [{ x: p.x, y: p.y, id: p.id, label: u.nombre[0] + u.apellido[0], verified: true }], me: origin(ctx) })}
       <p class="small muted">${p.barrios.map((b) => esc(S.barrio(b).nombre)).join(' · ')}</p>
@@ -513,10 +508,10 @@ const contratar = {
     const drawFr = () => {
       const dow = S.getDb() && ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'][new Date(day + 'T12:00:00').getDay()];
       const avail = p.disponibilidad[dow] || [];
-      const taken = (k) => S.getDb().orders.some((o) => o.providerId === p.id && o.fecha === day && o.franja === k && ['confirmada', 'en_camino', 'en_curso'].includes(o.estado));
+      const taken = (k) => S.getDb().orders.some((o) => o.providerId === p.id && o.fecha === day && o.franja === k && ['confirmada'].includes(o.estado));
       el.querySelector('#frs').innerHTML = Object.entries(FRANJAS).map(([k, v]) => { const ok = avail.includes(k) && !taken(k); return `<button type="button" class="chip ${fr === k ? 'on' : ''}" data-v="${k}" ${ok ? '' : 'disabled style="opacity:.4;cursor:not-allowed" data-tip="No disponible"'}>${v}</button>`; }).join('');
     };
-    const hint = () => { const r = S.rubro(el.querySelector('#rb').value); el.querySelector('#pr-hint').innerHTML = `Referencia: <span class="mono">${money(r.precio[0])} – ${money(r.precio[1])}</span>`; };
+    const hint = () => { const r = S.rubro(el.querySelector('#rb').value); el.querySelector('#pr-hint').innerHTML = `Ejemplo de demo: <span class="mono">${money(r.precio[0])} – ${money(r.precio[1])}</span>`; };
     el.querySelector('#days').onclick = (e) => { const b = e.target.closest('[data-v]'); if (!b) return; day = b.dataset.v; fr = null; qsa('#days .chip').forEach((x) => x.classList.toggle('on', x === b)); drawFr(); };
     el.querySelector('#frs').onclick = (e) => { const b = e.target.closest('[data-v]'); if (!b || b.disabled) return; fr = b.dataset.v; qsa('#frs .chip').forEach((x) => x.classList.toggle('on', x === b)); };
     el.querySelector('#rb').onchange = hint;
@@ -555,11 +550,11 @@ const misChangas = {
   render(ctx) {
     const reqs = S.requestsOfClient(ctx.user.id);
     const orders = S.ordersOfClient(ctx.user.id);
-    const openReqs = reqs.filter((r) => ['abierta', 'con_postulaciones'].includes(r.estado));
+    const openReqs = reqs.filter((r) => ['abierta'].includes(r.estado));
     const act = orders.filter((o) => S.ACTIVE.includes(o.estado));
-    const done = orders.filter((o) => ['finalizada', 'calificada', 'resuelta'].includes(o.estado));
+    const done = orders.filter((o) => ['finalizada'].includes(o.estado));
     const other = orders.filter((o) => ['cancelada', 'rechazada', 'vencida'].includes(o.estado));
-    const closedReqs = reqs.filter((r) => ['cancelada', 'vencida'].includes(r.estado) && !r.ordenId);
+    const closedReqs = reqs.filter((r) => r.estado === 'cancelada' && !r.ordenId);
     const tabs = `<div class="seg" style="margin-bottom:16px"><button class="${misTab === 'activas' ? 'on' : ''}" data-act="tab" data-v="activas">Activas · ${openReqs.length + act.length}</button><button class="${misTab === 'historial' ? 'on' : ''}" data-act="tab" data-v="historial">Historial · ${done.length + other.length}</button></div>`;
     if (misTab === 'activas') {
       if (!openReqs.length && !act.length) return tabs + empty('clipboard', 'No tenés changas activas', 'Publicá lo que necesitás y recibí postulaciones de prestadores verificados cerca tuyo.', '<button class="btn primary" data-go="/publicar/1?nuevo=1">Publicar changa</button>');
@@ -589,29 +584,22 @@ const orden = {
     const st = S.providerStats(p);
     const head = {
       pendiente_confirmacion: [`Esperando que ${pu.nombre} confirme`, `Vence en <span class="mono" data-countdown="${o.confirmarAntesDe}">--:--</span>. Si no confirma, tu changa vuelve a recibir postulaciones.`],
-      confirmada: [o.asap ? `${pu.nombre} confirmó` : `Confirmada para ${fmtDay(o.fecha)}`, o.asap ? 'Sale hacia tu domicilio en unos minutos.' : FRANJAS[o.franja]],
-      en_camino: [o.tracking?.arrived ? `${pu.nombre} llegó` : `Llega en ${o.tracking?.eta ?? '—'} min`, o.tracking?.arrived ? 'Dictale tu código para iniciar el trabajo.' : 'Seguilo en el mapa. Cuando llegue, dictale tu código.'],
-      en_curso: ['Trabajo en curso', `Código verificado. ${pu.nombre} está trabajando.`],
-      finalizada_pend_cliente: [`${pu.nombre} terminó`, `Informó ${money(o.montoFinal)}. Confirmá el pago para cerrar la orden.`],
+      confirmada: o.ejecutada ? [`${pu.nombre} informó la finalización`, `Confirmá el monto de ${money(o.montoFinal)} para cerrar la orden (CU-17).`] : ['Orden confirmada', `${fmtDay(o.fecha)} · ${FRANJAS[o.franja]}`],
       finalizada: ['Orden finalizada', o.calificoCliente ? '¡Gracias por calificar!' : 'Calificá el trabajo: ayuda a otros vecinos.'],
-      calificada: ['Orden finalizada y calificada', 'Gracias por usar Royal.'],
-      en_disputa: ['En revisión por Royal', 'Estamos analizando el reporte con ambas partes. Te avisamos la resolución.'],
-      resuelta: ['Reporte resuelto', S.dispute(o.disputaId)?.resolucion?.nota || ''],
+      en_revision: ['En revisión por Royal', 'Estamos analizando el reporte con ambas partes. Te avisamos la resolución.'],
       cancelada: ['Orden cancelada', `${o.cancelacion?.actor === 'cliente' ? 'La cancelaste' : `La canceló ${pu.nombre}`}: ${o.cancelacion?.motivo || ''}${o.cancelacion?.tardia ? ' · Cancelación tardía' : ''}`],
       rechazada: [`${pu.nombre} no pudo tomarla`, 'Tu changa volvió a recibir postulaciones.'],
       vencida: ['Venció sin confirmación', 'Tu changa volvió a recibir postulaciones.'],
     }[o.estado] || [L.order[o.estado], ''];
-    const canCancel = ['pendiente_confirmacion', 'confirmada', 'en_camino'].includes(o.estado);
-    const canReport = ['en_curso', 'finalizada_pend_cliente', 'finalizada'].includes(o.estado);
-    const help = ['en_camino', 'en_curso'].includes(o.estado);
+    const canCancel = ['pendiente_confirmacion', 'confirmada'].includes(o.estado) && !o.ejecutada;
+    const canReport = o.ejecutada && ['confirmada', 'finalizada'].includes(o.estado);
+    const help = false;
     const d = o.disputaId && S.dispute(o.disputaId);
     return `<div class="stack">
       <div class="card pad stack" style="gap:6px;border-left:3px solid var(--accent)">
-        <div class="row between">${statusBadge('order', o.estado, L)}${o.garantia ? `<span class="badge ok">${icon('shield')}Garantía Royal</span>` : ''}</div>
+        <div class="row between">${statusBadge('order', o.estado, L)}</div>
         <h1 style="font-size:20px">${esc(head[0])}</h1><p class="small muted">${head[1]}</p><div style="margin-top:6px">${orderProgress(o, L)}</div>
       </div>
-      ${o.estado === 'en_camino' && o.tracking ? mapSvg({ me: o.direccion, mover: { x: o.tracking.x, y: o.tracking.y, label: pu.nombre[0] + pu.apellido[0] }, dest: o.direccion }) : ''}
-      ${['confirmada', 'en_camino'].includes(o.estado) ? `<div class="card pad stack center"><div class="upper">Tu código de inicio</div><div class="code">${o.codigo.split('').map((c) => `<span>${c}</span>`).join('')}</div><p class="xs muted">Dictáselo a ${esc(pu.nombre)} cuando esté en tu puerta. Así confirmamos que es la persona verificada. No lo compartas antes.</p></div>` : ''}
       ${d ? `<div class="banner ${d.estado === 'resuelta' ? 'ok' : 'warn'}">${icon('scale')}<div><b>${esc(d.id)} · ${esc(L.dispute[d.estado])}</b><div class="small">${esc(d.motivo)}</div>${d.resolucion ? `<div class="small">Resolución: a favor de ${esc(d.resolucion.favor)}${d.resolucion.montoAjustado != null ? ` · monto ${money(d.resolucion.montoAjustado)}` : ''}. ${esc(d.resolucion.nota || '')}</div>` : ''}</div></div>` : ''}
       <div class="card list"><button class="li" data-go="/prestador/${p.id}">${avatar(pu, '', ['medio', 'alto'].includes(st.verif.nivel))}<div class="grow"><div class="strong small">${esc(pu.nombre)} ${esc(pu.apellido)}</div><div class="xs muted">${S.NIVEL_LABEL[st.verif.nivel]} · ${rating(st.rating.avg, st.rating.count)}</div></div>${icon('right', 'sm chev')}</button>
         <button class="li" data-go="/chat/${o.id}">${icon('message')}<span class="grow small">Mensajes</span>${(() => { const n = S.messagesOf(o.id).filter((m) => m.from !== ctx.user.id && !m.leido).length; return n ? `<span class="count">${n}</span>` : ''; })()}${icon('right', 'sm chev')}</button></div>
@@ -628,17 +616,16 @@ const orden = {
       ${help ? `<button class="btn block" data-act="help">${icon('lifebuoy')}Ayuda / emergencia</button>` : ''}
       <div class="section-title"><h2>Timeline</h2></div>
       <ul class="timeline">${[...o.timeline].reverse().map((h, i) => `<li class="${i === 0 ? 'now' : ''}"><div>${esc(h.texto)}</div><div class="t">${fmtDate(h.t)} ${fmtTime(h.t)} · ${esc(h.actor)}</div></li>`).join('')}</ul>
-      ${['finalizada', 'calificada'].includes(o.estado) ? `<button class="btn block" data-go="/contratar/${p.id}?rubro=${o.rubroId}">${icon('repeat')}Volver a contratar a ${esc(pu.nombre)}</button>` : ''}
+      ${['finalizada'].includes(o.estado) ? `<button class="btn block" data-go="/contratar/${p.id}?rubro=${o.rubroId}">${icon('repeat')}Volver a contratar a ${esc(pu.nombre)}</button>` : ''}
       ${canReport ? `<button class="btn ghost block" data-go="/reportar/${o.id}">${icon('flag')}Reportar un problema</button>` : ''}
       ${canCancel ? '<button class="btn danger block" data-act="cancel">Cancelar orden</button>' : ''}
-      ${['calificada', 'finalizada', 'resuelta'].includes(o.estado) && !canReport ? '' : ''}
     </div>`;
   },
   cta(ctx) {
     const o = S.order(ctx.params.id);
     if (!o) return '';
-    if (o.estado === 'finalizada_pend_cliente') { const pay = S.paymentOf(o.id); return `<button class="btn primary" data-go="/pago/${o.id}">${pay?.estado === 'pendiente_acreditacion' ? 'Ver estado del pago' : o.medio === 'efectivo' ? `Confirmar pago · ${money(o.montoFinal)}` : `Pagar ${money(o.montoFinal)}`}</button>`; }
-    if (['finalizada', 'calificada', 'resuelta'].includes(o.estado) && !o.calificoCliente) return '<button class="btn primary" data-go="/calificar/' + o.id + '">Calificar trabajo</button>';
+    if ((o.estado === 'confirmada' && o.ejecutada)) { const pay = S.paymentOf(o.id); return `<button class="btn primary" data-go="/pago/${o.id}">${pay?.estado === 'pendiente_acreditacion' ? 'Ver estado del pago' : o.medio === 'efectivo' ? `Confirmar pago · ${money(o.montoFinal)}` : `Pagar ${money(o.montoFinal)}`}</button>`; }
+    if (['finalizada'].includes(o.estado) && !o.calificoCliente) return '<button class="btn primary" data-go="/calificar/' + o.id + '">Calificar trabajo</button>';
     return '';
   },
   actions: {
@@ -687,7 +674,7 @@ const pago = {
         : `<div class="card list">
             <div class="li"><div class="grow"><div class="xs faint">Alias</div><div class="mono">${cfg.alias}</div></div><button class="btn sm" data-act="copy" data-v="${cfg.alias}">Copiar</button></div>
             <div class="li"><div class="grow"><div class="xs faint">CBU</div><div class="mono small">${cfg.cbu}</div></div><button class="btn sm" data-act="copy" data-v="${cfg.cbu.replace(/\s/g, '')}">Copiar</button></div>
-            <div class="li"><div class="grow"><div class="xs faint">Titular</div><div class="small">Royal Solutions S.A.S. · CUIT 30-71829456-3</div></div></div>
+            <div class="li"><div class="grow"><div class="xs faint">Titular</div><div class="small">Datos ficticios de demostración. No transferir dinero.</div></div></div>
           </div>
           <div class="field"><span class="label">Comprobante</span><label class="btn block">${icon('upload')}Adjuntar comprobante<input type="file" id="comp" accept="image/*,application/pdf" class="sr-only"></label><button type="button" class="btn ghost sm" data-act="fakeProof">Simular comprobante</button></div>`;
     } else {
@@ -699,7 +686,7 @@ const pago = {
       <div class="card pad"><div class="row">${avatar(pu, 'sm')}<div class="grow small"><b>${esc(pu.nombre)} ${esc(pu.apellido)}</b><div class="xs muted mono">${o.id} · ${esc(S.rubro(o.rubroId).nombre)}</div></div></div>
         <hr class="divider"><dl class="kv"><dt>Precio acordado</dt><dd>${moneyHtml(o.precioAcordado)}</dd>${diff ? `<dt>Monto informado</dt><dd class="strong" style="color:var(--warn)">${moneyHtml(o.montoFinal)}</dd>` : ''}<dt>Comisión Royal (${o.comisionPct}%)</dt><dd class="muted">${moneyHtml(pay.comision)} <span class="xs">a cargo del prestador</span></dd><dt class="strong" style="color:var(--text)">Total a pagar</dt><dd class="strong" style="font-size:17px">${moneyHtml(pay.monto)}</dd></dl></div>
       ${diff ? `<div class="banner warn">${icon('alert')}<div>El monto informado es distinto al acordado. Si no lo reconocés, tocá “El monto no coincide”.</div></div>` : ''}
-      <div class="field"><span class="label">Medio de pago</span><div class="stack" style="gap:8px" id="mm">${methods.map((m) => `<button type="button" class="opt ${pay.medio === m ? 'on' : ''}" data-v="${m}" ${editable ? '' : 'disabled'}>${icon(MEDIOS[m].icono)}<div class="grow"><div class="small strong">${MEDIOS[m].label}</div></div>${m !== 'efectivo' ? `<span class="badge ok">${icon('shield')}Garantía</span>` : ''}</button>`).join('')}</div></div>
+      <div class="field"><span class="label">Medio de pago</span><div class="stack" style="gap:8px" id="mm">${methods.map((m) => `<button type="button" class="opt ${pay.medio === m ? 'on' : ''}" data-v="${m}" ${editable ? '' : 'disabled'}>${icon(MEDIOS[m].icono)}<div class="grow"><div class="small strong">${MEDIOS[m].label}</div></div>${['mercadopago','tarjeta'].includes(m) ? '<span class="badge outline">Alcance completo · simulado</span>' : ''}</button>`).join('')}</div></div>
       ${body}
       ${pay.medio === 'efectivo' && editable ? '<button class="btn ghost block" data-act="reject">El monto no coincide</button>' : ''}
     </div>`;
@@ -774,7 +761,7 @@ const calificar = {
   render(ctx) {
     const o = S.order(ctx.params.id);
     const pu = S.user(S.provider(o.providerId).userId);
-    if (!['finalizada', 'calificada', 'resuelta'].includes(o.estado)) return empty('lock', 'Todavía no podés calificar', 'Las reseñas se habilitan cuando la orden está finalizada. Así todas las reseñas son de trabajos reales.');
+    if (!['finalizada'].includes(o.estado)) return empty('lock', 'Todavía no podés calificar', 'Las reseñas se habilitan cuando la orden está finalizada. Así todas las reseñas son de trabajos reales.');
     if (o.calificoCliente) return empty('check', 'Ya calificaste esta orden', 'Gracias por tu reseña.', `<button class="btn" data-go="/orden/${o.id}">Ver orden</button>`);
     return `<div class="stack center">${avatar(pu, 'lg')}<h1>¿Cómo trabajó ${esc(pu.nombre)}?</h1><p class="small muted">${esc(S.rubro(o.rubroId).nombre)} · <span class="mono">${o.id}</span></p>
       <div class="starpick" id="sp" role="radiogroup" aria-label="Calificación">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-n="${n}" aria-label="${n} estrellas">${icon('star')}</button>`).join('')}</div>
@@ -782,7 +769,7 @@ const calificar = {
       <div class="field" style="text-align:left"><label for="cm">Comentario (opcional)</label><textarea class="textarea" id="cm" placeholder="¿Qué destacarías?"></textarea></div>
       <p class="xs faint">Tu reseña se publica como <b>verificada</b> porque viene de una orden real.</p></div>`;
   },
-  cta: (ctx) => { const o = S.order(ctx.params.id); return ['finalizada', 'calificada', 'resuelta'].includes(o.estado) && !o.calificoCliente ? '<button class="btn primary" data-act="send">Enviar calificación</button>' : ''; },
+  cta: (ctx) => { const o = S.order(ctx.params.id); return ['finalizada'].includes(o.estado) && !o.calificoCliente ? '<button class="btn primary" data-act="send">Enviar calificación</button>' : ''; },
   mount(el) {
     calificar._stars = 0; calificar._tags = new Set();
     el.querySelector('#sp')?.addEventListener('click', (e) => { const b = e.target.closest('[data-n]'); if (!b) return; calificar._stars = Number(b.dataset.n); qsa('#sp button').forEach((x) => x.classList.toggle('on', Number(x.dataset.n) <= calificar._stars)); });
@@ -845,7 +832,7 @@ const perfil = {
         <button class="li" data-go="/perfil/datos">${icon('user')}<span class="grow">Mis datos</span>${icon('right', 'sm chev')}</button>
         <button class="li" data-go="/perfil/pagos">${icon('card')}<span class="grow">Medios de pago</span><span class="xs muted">${plural(u.tarjetas.length, 'tarjeta')}</span>${icon('right', 'sm chev')}</button>
         <button class="li" data-go="/perfil/direcciones">${icon('pin')}<span class="grow">Direcciones</span><span class="xs muted">${u.direcciones.length}</span>${icon('right', 'sm chev')}</button>
-        <button class="li" data-go="/favoritos">${icon('heart')}<span class="grow">Favoritos</span><span class="xs muted">${u.favoritos.length}</span>${icon('right', 'sm chev')}</button>
+        <button class="li" data-go="/favoritos">${icon('heart')}<span class="grow">Favoritos <small class="muted">· alcance completo</small></span><span class="xs muted">${u.favoritos.length}</span>${icon('right', 'sm chev')}</button>
         <button class="li" data-go="/perfil/notificaciones">${icon('bell')}<span class="grow">Notificaciones</span>${icon('right', 'sm chev')}</button>
       </div>
       <button class="card pad row" style="width:100%;text-align:left;cursor:pointer;color:inherit" data-act="offer">${icon('briefcase')}<div class="grow"><div class="strong">${p ? 'Ir a mi perfil de prestador' : 'Quiero ofrecer mis servicios'}</div><div class="xs muted">${p ? `Estado: ${L.provider[p.estado]}` : 'Sumate como prestador. Comisión de 3 a 5%, sin abonos.'}</div></div>${icon('external', 'sm')}</button>
@@ -937,7 +924,7 @@ const perfilNotif = {
   render(ctx) {
     const p = ctx.user.prefs;
     const row = (k, t, d) => `<div class="li"><div class="grow"><div class="small strong">${t}</div><div class="xs muted">${d}</div></div><label class="switch"><input type="checkbox" data-k="${k}" ${p[k] ? 'checked' : ''} aria-label="${t}"><span></span></label></div>`;
-    return `<div class="card list">${row('postulaciones', 'Postulaciones', 'Cuando un prestador se postula a tu changa')}${row('estados', 'Estado de la orden', 'Confirmaciones, en camino, finalización')}${row('mensajes', 'Mensajes', 'Chat con el prestador')}${row('promos', 'Novedades', 'Promociones y novedades de Royal')}</div>`;
+    return `<div class="card list">${row('postulaciones', 'Postulaciones', 'Cuando un prestador se postula a tu changa')}${row('estados', 'Estado de la orden', 'Confirmaciones, cancelaciones y finalización')}${row('mensajes', 'Mensajes', 'Chat con el prestador')}</div>`;
   },
   mount(el, ctx) { el.addEventListener('change', (e) => { const k = e.target.dataset.k; if (k) S.setPrefs(ctx.user.id, { [k]: e.target.checked }); toast('Preferencia guardada', 'ok'); }); },
 };
@@ -955,7 +942,7 @@ const favoritos = {
 /* ───────────── arranque ───────────── */
 const fig1 = `<div class="stack" style="gap:8px"><div class="row between small"><span class="strong">Plomería</span><span class="badge accent">3 postulaciones</span></div><div class="small muted">“Se rompió el flexible del lavatorio”</div><div class="row between small"><span>Ramiro B. · ${icon('star', 'sm')} 4.9</span><span class="mono">$ 28.500</span></div></div>`;
 const fig2 = `<div class="stack" style="gap:6px"><span class="badge ok">${icon('shield')}DNI verificado</span><span class="badge ok">${icon('check')}Antecedentes</span><span class="badge ok">${icon('badge')}Matrícula de gas · vigente</span></div>`;
-const fig3 = `<div class="row wrap gap-1"><span class="badge">${icon('cash')}Efectivo</span><span class="badge">${icon('bank')}Transferencia</span><span class="badge">${icon('wallet')}Mercado Pago</span><span class="badge ok">${icon('shield')}Garantía Royal</span></div>`;
+const fig3 = `<div class="row wrap gap-1"><span class="badge">${icon('cash')}Efectivo</span><span class="badge">${icon('bank')}Transferencia</span><span class="badge">${icon('wallet')}Mercado Pago</span><span class="badge ok">${icon('shield')}Pagos simulados</span></div>`;
 
 startMobileApp({
   app: 'cliente', theme: 'light', home: '/inicio',
@@ -970,14 +957,14 @@ startMobileApp({
   quickLogins: [{ label: 'Entrar como Lucía — cliente', email: 'lucia@demo.com' }, { label: 'Entrar como Martín — cliente', email: 'martin.aguirre@demo.com' }],
   onboarding: [
     { title: 'Publicá lo que necesitás', text: 'Contalo en una línea. Los prestadores cerca tuyo te mandan su precio en minutos.', figure: fig1 },
-    { title: 'Elegí con datos, no a ciegas', text: 'Identidad, antecedentes y matrícula verificadas. Las reseñas son solo de trabajos reales.', figure: fig2 },
-    { title: 'Pagá como te quede cómodo', text: 'Efectivo, transferencia o Mercado Pago. Dentro de Royal tenés garantía.', figure: fig3 },
+    { title: 'Elegí con datos, no a ciegas', text: 'Identidad, antecedentes y matrícula verificadas. Las reseñas se vinculan a órdenes finalizadas; los ejemplos son ficticios.', figure: fig2 },
+    { title: 'Pagá como te quede cómodo', text: 'Efectivo, transferencia o Mercado Pago. Los pagos y verificaciones se simulan en este prototipo.', figure: fig3 },
   ],
   guard(ctx) { if (!ctx.user.roles.includes('cliente')) { S.logout('cliente'); toast('Esta cuenta no es de cliente.', 'err'); return '/login'; } return null; },
   tabs: [
     { path: '/inicio', label: 'Inicio', icon: 'home' },
     { path: '/buscar', label: 'Buscar', icon: 'search' },
-    { path: '/mis-changas', label: 'Mis changas', icon: 'clipboard', badge: (ctx) => S.ordersOfClient(ctx.user.id).filter((o) => o.estado === 'finalizada_pend_cliente' || (o.estado === 'finalizada' && !o.calificoCliente)).length },
+    { path: '/mis-changas', label: 'Mis changas', icon: 'clipboard', badge: (ctx) => S.ordersOfClient(ctx.user.id).filter((o) => (o.estado === 'confirmada' && o.ejecutada) || (o.estado === 'finalizada' && !o.calificoCliente)).length },
     { path: '/mensajes', label: 'Mensajes', icon: 'message', badge: (ctx) => S.unreadMessages(ctx.user.id) },
     { path: '/perfil', label: 'Perfil', icon: 'user' },
   ],

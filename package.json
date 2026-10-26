@@ -1,0 +1,6 @@
+{
+  "name": "royal-solutions-prototipo",
+  "private": true,
+  "scripts": { "test": "node tests/audit.cjs" },
+  "devDependencies": { "playwright": "1.62.1" }
+}

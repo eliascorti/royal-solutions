@@ -151,3 +151,5 @@ body.has-tabbar .cta-bar { bottom: 0; }
 body.embedded .tabbar { padding-bottom: 20px; }
 body.embedded .cta-bar, body.embedded .chat-input, body.embedded .onb .bottom, body.embedded .sheet-f { padding-bottom: 26px; }
 body.embedded .toasts { bottom: 104px; }
+
+.scope-notice { display:block; padding:8px 0 14px; line-height:1.5; text-decoration:underline; }

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Royal Solutions</title>
-  <meta name="description" content="Royal Solutions — oficios y changas en Córdoba. Demo navegable: app cliente, app prestador y panel admin.">
+  <meta name="description" content="Royal Solutions — prototipo académico de oficios y changas. Demo navegable: app cliente, app prestador y panel admin.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23E8590C'/%3E%3Ctext x='16' y='22' font-family='monospace' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
   <script>try { document.documentElement.dataset.theme = localStorage.getItem('rs_theme_index') || 'light'; } catch (e) { document.documentElement.dataset.theme = 'light'; }</script>
   <link rel="stylesheet" href="css/tokens.css">
@@ -69,50 +69,53 @@
   <div class="wrap">
     <header class="top">
       <span class="logo"><span class="mark">R</span>Royal Solutions</span>
-      <span class="badge outline mono">MVP · v0.9.2 · Santa Fe</span>
+      <span class="badge outline mono">MVP avanzado · v0.10.0 · Demo académica</span>
     </header>
 
     <section class="hero">
       <h1>Oficios y changas cerca tuyo, con reputación verificada y acuerdo dentro de la plataforma.</h1>
-      <p>Demo navegable de punta a punta. Las apps comparten el mismo estado en este navegador: lo que hacés en una se refleja en las otras en tiempo real.</p>
+      <p>Prototipo funcional con datos ficticios y ampliaciones del alcance completo identificadas. Las apps comparten el mismo estado en este navegador: lo que hacés en una se refleja en las otras en tiempo real.</p>
       <div class="row-actions">
         <button class="btn primary" id="demoBtn">Vista demo · cliente + prestador</button>
         <a class="btn" href="cliente.html">Abrir app cliente</a>
+        <a class="btn" href="presentacion.html">MVP, alcance completo y exposición</a>
       </div>
     </section>
 
     <nav class="apps" aria-label="Aplicaciones">
       <a class="app" href="cliente.html">
         <span class="k">01 · MOBILE</span><h2>App Cliente</h2>
-        <p>Publicar una changa en menos de 45 s, comparar postulaciones, seguir al prestador en el mapa, pagar y calificar.</p>
+        <p>Publicar una solicitud, comparar postulaciones, elegir fecha y prestador, registrar el pago y calificar.</p>
         <span class="go">Entrar como Lucía →</span>
       </a>
       <a class="app" href="prestador.html">
         <span class="k">02 · MOBILE</span><h2>App Prestador</h2>
-        <p>Alta con verificación por nivel de riesgo, feed de changas por distancia, agenda, billetera y deuda de comisión por efectivo.</p>
+        <p>Alta, certificados, postulación con precio y mensaje, confirmación de órdenes y comisión diferida por efectivo.</p>
         <span class="go">Entrar como Ramiro →</span>
       </a>
       <a class="app" href="admin.html">
         <span class="k">03 · WEB</span><h2>Panel Admin</h2>
-        <p>Verificaciones con documentos, órdenes, disputas, comisiones por efectivo, tracción del POC y auditoría de cada acción.</p>
+        <p>Usuarios, certificados, órdenes y pagos, moderación de reseñas y reportes. Operación representada con datos locales.</p>
         <span class="go">Entrar como Operaciones →</span>
       </a>
     </nav>
 
     <section class="facts" aria-label="Diferenciales">
-      <div><b>3–5%</b><span>comisión según rubro (vs. hasta 40%)</span></div>
-      <div><b>DNI + matrícula</b><span>verificación según riesgo del rubro</span></div>
+      <div><b>3–5%</b><span>rango de comisión del documento; valores de demo</span></div>
+      <div><b>DNI + matrícula</b><span>verificación simulada · alcance completo</span></div>
       <div><b>Efectivo</b><span>con comisión diferida, además de digital</span></div>
-      <div><b>100%</b><span>reseñas de órdenes finalizadas</span></div>
+      <div><b>Por orden</b><span>reseñas de participantes; ejemplos ficticios</span></div>
     </section>
 
+    <p class="note"><b>Equipo actual:</b> Corti · Cavanna · Reinante · Turchi. <b>Entorno académico:</b> no procesa dinero ni verifica identidad real. <a href="presentacion.html">Consultar alcance, mockup y distribución de temas.</a></p>
     <p class="note">Panel de demo oculto: mantené presionado el logo 2 s, tocá 5 veces la versión en Perfil o agregá <span class="mono">?dev=1</span> a la URL. <span class="mono">?reset=1</span> vuelve a cargar los datos de ejemplo.</p>
   </div>
 
   <section class="demo" aria-label="Vista demo">
     <div class="demo-bar">
-      <span class="logo"><span class="mark">R</span>Vista demo</span>
+      <span class="logo"><span class="mark">R</span>Vista demo · datos ficticios</span>
       <div class="row">
+        <a class="btn sm" href="presentacion.html">Alcance y exposición</a>
         <a class="btn sm" href="admin.html" target="_blank" rel="noopener">Abrir panel admin</a>
         <button class="btn sm" id="reloadBtn">Recargar teléfonos</button>
         <button class="btn sm" id="closeBtn">Salir de la vista demo</button>

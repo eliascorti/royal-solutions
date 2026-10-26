@@ -26,7 +26,7 @@ export function buildSeed(NOW) {
       nivelPorRubro: Object.fromEntries(RUBROS.map((r) => [r.id, r.riesgo])),
       limiteDeuda: 15000, plazoConfirmacionMin: 15, recargoUrgentePct: 20, maxSolicitudesAbiertas: 3, plazoCalificacionDias: 7,
       barriosHabilitados: BARRIOS.map((b) => b.id),
-      alias: 'ROYAL.CHANGAS.CBA', cbu: '0170 3294 4000 0031 8870 12',
+      alias: 'DEMO.SIN.CUENTA.BANCARIA', cbu: '0000 0000 0000 0000 0000 00',
     },
   };
 
@@ -384,5 +384,14 @@ export function buildSeed(NOW) {
   provs.forEach((p) => p.historial.slice(1).forEach((h) => db.audit.push({ id: id('LOG'), t: h.t, actor: h.actor, rol: h.actor.startsWith('Admin') ? 'admin' : 'prestador', accion: `prestador.${h.estado}`, entidad: 'prestador', entidadId: p.id, detalle: h.texto || '' })));
   db.notifications.sort((a, b) => b.t - a.t);
   db.audit.sort((a, b) => b.t - a.t);
+  // Compatibilización de los escenarios históricos: sin estados de negocio añadidos.
+  db.orders.forEach(o => {
+    const old = o.estado;
+    o.ejecutada = ['finalizada_pend_cliente','finalizada','calificada','en_disputa','resuelta'].includes(old);
+    o.estado = ({en_camino:'confirmada',en_curso:'confirmada',finalizada_pend_cliente:'confirmada',calificada:'finalizada',en_disputa:'en_revision',resuelta:'finalizada'})[old] || old;
+    delete o.codigo; delete o.intentosCodigo; delete o.tracking; o.garantia = false;
+    o.timeline = o.timeline.filter(h => !/código|en camino|iniciado/i.test(h.texto || '')).map(h => ({...h, estado: ({en_camino:'confirmada',en_curso:'confirmada',finalizada_pend_cliente:'confirmada',calificada:'finalizada',en_disputa:'en_revision',resuelta:'finalizada'})[h.estado] || h.estado}));
+  });
+  db.requests.forEach(r => { if(r.estado==='con_postulaciones') r.estado='abierta'; if(r.estado==='vencida') r.estado='cancelada'; r.historial.forEach(h=>{if(h.estado==='con_postulaciones')h.estado='abierta';}); });
   return db;
 }

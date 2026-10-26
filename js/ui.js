@@ -60,18 +60,18 @@ export function statusBadge(kind, estado, labels) {
 }
 
 /* Barra de progreso de estados. Las ramas (cancelada, disputa, etc.) se marcan en el paso donde se cortó el flujo. */
-const ORDER_STEPS = ['Confirmación', 'En camino', 'Trabajo', 'Pago', 'Cierre'];
-const ORDER_POS = { pendiente_confirmacion: 0, confirmada: 1, en_camino: 1, en_curso: 2, finalizada_pend_cliente: 3, finalizada: 4, calificada: 5, resuelta: 5 };
+const ORDER_STEPS = ['Confirmación', 'Servicio', 'Pago', 'Finalizada'];
+const ORDER_POS = { pendiente_confirmacion: 0, confirmada: 1, finalizada: 4 };
 export function orderProgress(o, labels) {
-  let pos = ORDER_POS[o.estado];
+  let pos = o.estado === 'confirmada' && o.ejecutada ? 2 : ORDER_POS[o.estado];
   let branch = null;
   if (pos == null) {
     // cancelada / rechazada / vencida / en_disputa: ubicar el último estado "normal" alcanzado
     const last = [...o.timeline].reverse().find((t) => ORDER_POS[t.estado] != null && t.estado !== o.estado);
     pos = last ? ORDER_POS[last.estado] : 0;
-    branch = { label: labels?.order?.[o.estado] || o.estado, tone: o.estado === 'en_disputa' ? 'pause' : 'stop' };
+    branch = { label: labels?.order?.[o.estado] || o.estado, tone: o.estado === 'en_revision' ? 'pause' : 'stop' };
   }
-  return progressBar(ORDER_STEPS, pos, branch, o.estado === 'finalizada' && !branch ? 'Calificación' : null);
+  return progressBar(ORDER_STEPS, pos, branch, null);
 }
 const PROV_STEPS = ['Datos', 'Documentación', 'Revisión', 'Aprobado'];
 const PROV_POS = { borrador: 1, pendiente_revision: 2, en_revision: 2, aprobado: 4 };
@@ -195,7 +195,11 @@ export function readImage(file, max = 640) {
   return new Promise((resolve, reject) => {
     if (!file) return reject(new Error('Sin archivo'));
     if (file.type === 'application/pdf') {
-      return resolve({ dataUrl: null, mime: file.type, kb: Math.round(file.size / 1024), name: file.name });
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('No pudimos leer el PDF.'));
+      reader.onload = () => resolve({ dataUrl: reader.result, mime: file.type, kb: Math.round(file.size / 1024), name: file.name });
+      reader.readAsDataURL(file);
+      return;
     }
     if (!file.type.startsWith('image/')) return reject(new Error('Formato no admitido. Subí JPG, PNG o PDF.'));
     const reader = new FileReader();
@@ -223,7 +227,7 @@ export const toPx = (x, y) => [150 + x * 30, 210 - y * 30];
  */
 export function mapSvg({ pins = [], me = null, jobs = [], mover = null, dest = null, highlight = [], height = null, pinAction = 'pin' } = {}) {
   const hl = new Set([].concat(highlight));
-  let s = `<div class="map"${height ? ` style="height:${height}px"` : ''}><svg viewBox="20 10 300 390" role="img" aria-label="Mapa de barrios de Córdoba">`;
+  let s = `<p class="xs muted">Alcance completo · mapa esquemático, sin GPS real.</p><div class="map"${height ? ` style="height:${height}px"` : ''}><svg viewBox="20 10 300 390" role="img" aria-label="Mapa esquemático con barrios de ejemplo de Santa Fe">`;
   s += `<path class="road" d="M20 210 H320"/><path class="road" d="M152 10 V400"/><path class="road" d="M40 330 L300 120"/>`;
   s += `<path class="river" d="M20 158 C 70 170, 110 176, 150 178 S 230 160, 320 200"/>`;
   BARRIOS.forEach((b) => {
@@ -264,6 +268,7 @@ export function fakeDocSvg(doc, u, rubroNombre = '') {
   }
 }
 export function docImage(doc, u, rubroNombre) {
+  if (doc.archivo?.startsWith('data:application/pdf')) return `<object data="${esc(doc.archivo)}" type="application/pdf" style="width:100%;min-height:300px"><p>PDF adjunto. <a href="${esc(doc.archivo)}" download="documento-demo.pdf">Descargar documento cargado</a></p></object>`;
   if (doc.archivo) return `<img src="${doc.archivo}" alt="Documento cargado">`;
   return fakeDocSvg(doc, u, rubroNombre);
 }

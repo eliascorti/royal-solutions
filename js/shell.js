@@ -1,6 +1,7 @@
 // Shell común de las apps mobile (cliente y prestador): layout, router, login/registro,
 // onboarding, notificaciones, chat y refresco en vivo cuando otra pestaña cambia el estado.
 import * as S from './store.js';
+import { scopeNote } from './alcance.js';
 import { initSync, setPresenceUser } from './sync.js';
 import { initDevtools } from './devtools.js';
 import { APP_VERSION, BARRIOS } from './data.js';
@@ -114,7 +115,7 @@ export function startMobileApp(cfg) {
     try { html = await view.render(ctx); } catch (e) { console.error(e); html = empty('alert', 'No pudimos cargar esta pantalla', e.message); }
     if (current.key !== key) return;
     const cta = view.cta ? view.cta(ctx) : '';
-    $screen.innerHTML = `<div class="view ${view.cls || ''} ${cta ? 'has-cta' : ''}">${html}</div>`;
+    $screen.innerHTML = `<div class="view ${view.cls || ''} ${cta ? 'has-cta' : ''}"><a class="scope-notice xs muted" href="presentacion.html" target="_top">${esc(scopeNote(path))} · Ver alcance</a>${html}</div>`;
     $cta.innerHTML = cta ? `<div class="cta-bar">${cta}</div>` : '';
     view.mount?.(qs('.view', $screen), ctx);
     $screen.scrollTop = scroll;
@@ -200,9 +201,9 @@ export function startMobileApp(cfg) {
   loadUser();
   seedSeen();
   function seedSeen() { if (ctx.user) S.notificationsOf(ctx.user.id, app).forEach((n) => seen.add(n.id)); }
-  window.addEventListener('rs:login', () => { loadUser(); seedSeen(); });
+  window.addEventListener('rs:login', () => { loadUser(); seedSeen(); if (ctx.user && !localStorage.getItem(`rs_onboarding_done_${app}`)) showOnboarding(cfg, () => render(true)); });
   trackHash();
-  if (!localStorage.getItem(`rs_onboarding_done_${app}`)) showOnboarding(cfg, () => render(true));
+  if (ctx.user && !localStorage.getItem(`rs_onboarding_done_${app}`)) showOnboarding(cfg, () => render(true));
   else render(true);
 
   initDevtools(app);
@@ -405,7 +406,7 @@ export function threadsOf(ctx, orders) {
 }
 
 export function threadListHtml(ctx, threads, counterpart) {
-  if (!threads.length) return empty('message', 'Todavía no tenés conversaciones', 'El chat se habilita cuando hay una orden. Así todo queda registrado y con garantía.');
+  if (!threads.length) return empty('message', 'Todavía no tenés conversaciones', 'El chat se habilita cuando hay una orden. Es una ampliación documentada del alcance completo.');
   return `<div class="card list">${threads.map(({ o, last, unread }) => {
     const u = counterpart(o);
     return `<button class="li" data-go="/chat/${o.id}">${avatar(u)}<div class="grow"><div class="row between"><span class="strong small">${esc(u.nombre)} ${esc(u.apellido)}</span><span class="xs faint mono">${last ? fmtRel(last.t, S.now()) : ''}</span></div>
@@ -418,7 +419,7 @@ function chatView(app) {
   const counterpart = (ctx, o) => (app === 'cliente' ? S.user(S.provider(o.providerId).userId) : S.user(o.clienteId));
   const bubbles = (ctx, o) => {
     const msgs = S.messagesOf(o.id);
-    const intro = `<div class="msg sys">${icon('shield', 'sm')} Chat de la orden ${o.id}. Los datos de contacto se ocultan: si la operación sigue en Royal, tenés garantía y reputación verificada.</div>`;
+    const intro = `<div class="msg sys">${icon('shield', 'sm')} Chat de la orden ${o.id}. Los datos de contacto se ocultan: el chat pertenece al alcance completo y usa mensajes de ejemplo.</div>`;
     return intro + msgs.map((m) => {
       const me = m.from === ctx.user.id;
       const text = esc(m.text).replace(/\[dato oculto\]/g, '<span class="masked">dato oculto</span>');
