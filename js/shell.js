@@ -1,7 +1,6 @@
 // Shell común de las apps mobile (cliente y prestador): layout, router, login/registro,
 // onboarding, notificaciones, chat y refresco en vivo cuando otra pestaña cambia el estado.
 import * as S from './store.js';
-import { scopeNote } from './alcance.js';
 import { initSync, setPresenceUser } from './sync.js';
 import { initDevtools } from './devtools.js';
 import { APP_VERSION, BARRIOS } from './data.js';
@@ -115,7 +114,7 @@ export function startMobileApp(cfg) {
     try { html = await view.render(ctx); } catch (e) { console.error(e); html = empty('alert', 'No pudimos cargar esta pantalla', e.message); }
     if (current.key !== key) return;
     const cta = view.cta ? view.cta(ctx) : '';
-    $screen.innerHTML = `<div class="view ${view.cls || ''} ${cta ? 'has-cta' : ''}"><a class="scope-notice xs muted" href="presentacion.html" target="_top">${esc(scopeNote(path))} · Ver alcance</a>${html}</div>`;
+    $screen.innerHTML = `<div class="view ${view.cls || ''} ${cta ? 'has-cta' : ''}">${html}</div>`;
     $cta.innerHTML = cta ? `<div class="cta-bar">${cta}</div>` : '';
     view.mount?.(qs('.view', $screen), ctx);
     $screen.scrollTop = scroll;
@@ -229,8 +228,8 @@ function showOnboarding(cfg, done) {
   const draw = () => {
     const s = slides[i];
     el.innerHTML = `<div class="top"><span class="logo"><span class="mark">R</span>Royal Solutions</span><button class="btn ghost sm" data-skip>Saltar</button></div>
-      <div class="body"><span class="num">0${i + 1} / 0${slides.length}</span><h1>${esc(s.title)}</h1><p>${esc(s.text)}</p>${s.figure ? `<div class="figure">${s.figure}</div>` : ''}</div>
-      <div class="bottom"><div class="steps">${slides.map((_, k) => `<span class="${k <= i ? 'on' : ''}"></span>`).join('')}</div><button class="btn primary block" data-next>${i === slides.length - 1 ? 'Empezar' : 'Siguiente'}</button></div>`;
+      <div class="body"><div class="intro"><span class="num">0${i + 1} / 0${slides.length}</span><h1>${esc(s.title)}</h1><p>${esc(s.text)}</p></div>${s.figure ? `<div class="preview"><div class="figure">${s.figure}</div></div>` : ''}</div>
+      <div class="bottom"><div class="steps" role="img" aria-label="Paso ${i + 1} de ${slides.length}">${slides.map((_, k) => `<span class="${k <= i ? 'on' : ''}"></span>`).join('')}</div><button class="btn primary block" data-next>${i === slides.length - 1 ? 'Empezar' : 'Siguiente'}</button></div>`;
     el.querySelector('[data-skip]').onclick = finish;
     el.querySelector('[data-next]').onclick = () => { if (i === slides.length - 1) finish(); else { i++; draw(); } };
   };

@@ -95,7 +95,10 @@ const results = [];
     for(const path of paths){
       await page.goto(`http://127.0.0.1:5501/${app}.html#${path}`);
       await page.waitForSelector(app==='admin'?'#content':'#screen .view');
-      if(app!=='admin')await page.waitForSelector('.scope-notice');
+      if(app!=='admin'){
+        await page.waitForFunction(()=>document.querySelector('#screen .view')&&!document.querySelector('#screen .sk'));
+        assert.equal(await page.locator('.scope-notice').count(),0);
+      }
       const text=await page.locator(app==='admin'?'#content':'#screen').innerText();
       assert(!text.includes('No pudimos cargar esta pantalla'),`${app}${path}: ${text}`);
       assert(!/undefined|\bNaN\b/.test(text),`${app}${path}: valor sin resolver`);

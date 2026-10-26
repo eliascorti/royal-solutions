@@ -53,7 +53,7 @@ module.exports=async function(context){
   const out=await cliente.evaluate(async oid=>{const S=await import('./js/store.js');S.syncFromStorage();return {estado:S.order(oid).estado,reviews:S.getDb().reviews.filter(r=>r.orderId===oid).length,deuda:S.getDb().ledger.filter(m=>m.orderId===oid&&m.tipo==='deuda_efectivo').reduce((a,m)=>a+m.monto,0)};},oid);
   assert.deepEqual(out,{estado:'finalizada',reviews:2,deuda:1200});
   for(const p of [cliente,prestador]){
-    await p.waitForSelector('.scope-notice');
+    await p.waitForSelector('.timeline');
     await p.waitForFunction(()=>!document.querySelector('.push,.toast'),null,{timeout:10000});
   }
   await cliente.screenshot({path:'test-results/cliente-orden-finalizada.png'});
