@@ -88,7 +88,7 @@ const results = [];
   });
   const routes={
     cliente:['/inicio','/buscar','/buscar?vista=mapa','/publicar/1','/publicar/2','/publicar/3','/publicar/resumen',`/changa/${ids.rid}`,`/prestador/${ids.pid}`,`/contratar/${ids.pid}`,'/mis-changas',`/orden/${ids.oid}`,`/pago/${ids.oid}`,`/calificar/${ids.oid}`,'/perfil','/perfil/datos','/perfil/pagos','/perfil/direcciones','/perfil/notificaciones','/favoritos','/mensajes','/notificaciones'],
-    prestador:['/trabajos',`/trabajo/${ids.rid}`,`/orden/${ids.oid}`,'/agenda','/historial','/billetera','/reputacion','/perfil','/documentos','/alta','/alta/1','/alta/2','/alta/3','/alta/4','/alta/5','/mensajes','/notificaciones'],
+    prestador:['/trabajos',`/trabajo/${ids.rid}`,`/orden/${ids.oid}`,'/agenda','/historial','/perfil/rubros','/perfil/zona','/reputacion','/perfil','/documentos','/alta','/alta/1','/alta/2','/alta/3','/alta/4','/alta/5','/mensajes','/notificaciones'],
     admin:['/usuarios',`/usuarios/${ids.uid}`,'/verificaciones',`/verificaciones/${ids.pid}`,'/ordenes',`/ordenes/${ids.oid}`,'/disputas','/resenas','/comisiones']
   };
   for(const [app,paths]of Object.entries(routes))await check(`Pantallas ${app}: ${paths.length} rutas sin fallos de render`,async()=>{
@@ -105,15 +105,7 @@ const results = [];
       assert.equal(await page.locator('.ic').evaluateAll(nodes=>nodes.filter(n=>n.querySelector('title')?.textContent==='missing').length),0);
     }
   });
-  await check('Presentación: cuatro integrantes, matriz completa y filtro',async()=>{
-    await page.setViewportSize({width:1440,height:1000});
-    await page.goto('http://127.0.0.1:5501/presentacion.html');await page.waitForSelector('#features tr');
-    assert.equal(await page.locator('#equipo article').count(),4);
-    assert.equal(await page.locator('#features tr').count(),67);
-    await page.selectOption('#scope','MVP');assert.equal(await page.locator('#features tr').count(),29);
-    await page.selectOption('#scope','');
-    mkdirSync('test-results',{recursive:true});await page.screenshot({path:'test-results/presentacion.png',fullPage:true});
-  });
+  await require('./scope-ui.cjs')({ page, context, check, ids });
   await check('Recorrido real por interfaz: publicar → postular → contratar → cobrar → calificar ambos',async()=>{
     await page.goto('http://127.0.0.1:5501/index.html');
     await require('./ui-flow.cjs')(context);

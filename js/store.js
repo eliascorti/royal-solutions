@@ -206,7 +206,7 @@ export function login(email, pass, app) {
       persist();
       throw generic;
     }
-    if (u.estado !== 'activo') throw new AppError(u.estado === 'bloqueado' ? 'Esta cuenta está bloqueada. Consultá el estado con el equipo del proyecto en la presentación.' : 'Tu cuenta está suspendida. Contactá a soporte.');
+    if (u.estado !== 'activo') throw new AppError(u.estado === 'bloqueado' ? 'Esta cuenta está bloqueada. Consultá el estado con la administración.' : 'Tu cuenta está suspendida. Contactá a soporte.');
     if (app === 'admin' && !u.roles.includes('admin')) throw new AppError('Esta cuenta no tiene acceso al panel.');
     u.intentos = 0;
     audit({ id: u.id, rol: app === 'admin' ? 'admin' : app }, 'auth.login', 'usuario', u.id, app);
@@ -696,7 +696,7 @@ function onCredited(o, pay, actor) {
   if (pay.medio === 'efectivo') {
     db.ledger.push({ id: nextId('MOV'), providerId: p.id, orderId: o.id, tipo: 'deuda_efectivo', monto: pay.comision, t: now(), detalle: `Comisión ${o.comisionPct}% a saldar · ${o.id}` });
     const deuda = debtOf(p.id);
-    if (deuda >= db.config.limiteDeuda) notify(p.userId, 'prestador', 'Llegaste al límite de deuda', `Debés $ ${deuda.toLocaleString('es-AR')} en comisiones. Regularizá para seguir postulándote.`, '/billetera', 'warn');
+    if (deuda >= db.config.limiteDeuda) notify(p.userId, 'prestador', 'Llegaste al límite de deuda', `Debés $ ${deuda.toLocaleString('es-AR')} en comisiones. Regularizá para seguir postulándote.`, '/perfil', 'warn');
   } else {
     db.ledger.push({ id: nextId('MOV'), providerId: p.id, orderId: o.id, tipo: 'comision_deducida', monto: -pay.comision, t: now(), detalle: `Comisión ${o.comisionPct}% deducida · ${o.id}` });
   }
@@ -781,7 +781,7 @@ export function payDebt(pid, monto, actor, medio = 'mercadopago') {
     const m = Math.min(monto || deuda, deuda);
     if (m <= 0) throw new AppError('No hay deuda para saldar.');
     db.ledger.push({ id: nextId('MOV'), providerId: pid, tipo: 'pago_deuda', monto: m, t: now(), detalle: `Pago de comisiones · ${MEDIOS[medio]?.label || medio}` });
-    notify(provider(pid).userId, 'prestador', 'Deuda regularizada', `Registramos tu pago de $ ${m.toLocaleString('es-AR')}.`, '/billetera', 'ok');
+    notify(provider(pid).userId, 'prestador', 'Deuda regularizada', `Registramos tu pago de $ ${m.toLocaleString('es-AR')}.`, '/perfil', 'ok');
     audit(actor, 'comision.pago_registrado', 'prestador', pid, `$ ${m}`);
     return m;
   });

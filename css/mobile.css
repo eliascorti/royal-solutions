@@ -30,7 +30,9 @@ body.m { background: var(--bg); overflow: hidden; }
 .appbar .icon-btn { position: relative; }
 .appbar .icon-btn .count { position: absolute; top: 4px; right: 2px; }
 .logo { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: .01em; user-select: none; -webkit-user-select: none; cursor: default; }
-.logo .mark { width: 22px; height: 22px; background: var(--accent); color: var(--accent-text); border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+.logo .mark { width: 32px; height: 32px; object-fit: contain; border-radius: 4px; display: block; }
+.auth .brand .mark { width: 80px; height: 80px; }
+.onb .logo .mark { width: 40px; height: 40px; }
 
 /* contenido */
 .screen { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; position: relative; }

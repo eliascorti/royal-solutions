@@ -5,7 +5,7 @@ import { initSync, setPresenceUser } from './sync.js';
 import { initDevtools } from './devtools.js';
 import { APP_VERSION, BARRIOS } from './data.js';
 import {
-  icon, esc, avatar, toast, pushBanner, run, initTheme, toggleTheme, parseHash, matchRoute, go, setNavigator, skeleton, delay,
+  icon, esc, avatar, toast, pushBanner, run, parseHash, matchRoute, go, setNavigator, skeleton, delay,
   fmtRel, fmtTime, empty, sheet, qs, qsa,
 } from './ui.js';
 
@@ -19,7 +19,7 @@ export function startMobileApp(cfg) {
   }
   document.body.classList.add('m');
   if (window.self !== window.top) document.body.classList.add('embedded');
-  initTheme(app, cfg.theme);
+  document.documentElement.dataset.theme = "light";
   S.load();
 
   document.body.innerHTML = `<div class="device"><header class="appbar" id="appbar"></header><main class="screen" id="screen" tabindex="-1"></main><div id="cta"></div><nav class="tabbar" id="tabbar" aria-label="Navegación principal"></nav></div>`;
@@ -126,7 +126,7 @@ export function startMobileApp(cfg) {
     const unread = ctx.user ? S.unreadCount(ctx.user.id, app) : 0;
     const left = view.back
       ? `<button class="btn ghost icon back" data-act="__back" aria-label="Volver">${icon('left')}</button>`
-      : `<span class="logo" data-logo><span class="mark">R</span></span>`;
+      : `<span class="logo" data-logo><img class="mark" src="assets/logo.png" alt="Royal Solutions"></span>`;
     const right = [
       view.actions?.bar ? view.actions.bar(ctx) : '',
       ctx.user && !view.public ? `<button class="btn ghost icon icon-btn" data-go="/notificaciones" aria-label="Notificaciones">${icon('bell')}${unread ? `<span class="count">${unread > 9 ? '9+' : unread}</span>` : ''}</button>` : '',
@@ -188,7 +188,6 @@ export function startMobileApp(cfg) {
     if (!a) return;
     const name = a.dataset.act;
     if (name === '__back') { goBack(); return; }
-    if (name === '__theme') { toggleTheme(app); render(false); return; }
     if (name === '__logout') { S.logout(app); setPresenceUser(null); stack.length = 0; nav('/login', { replace: true }); return; }
     const fn = current?.view.actions?.[name];
     if (fn) { e.preventDefault(); fn(a, e, ctx); }
@@ -227,7 +226,7 @@ function showOnboarding(cfg, done) {
   const finish = () => { localStorage.setItem(`rs_onboarding_done_${cfg.app}`, '1'); el.remove(); done(); };
   const draw = () => {
     const s = slides[i];
-    el.innerHTML = `<div class="top"><span class="logo"><span class="mark">R</span>Royal Solutions</span><button class="btn ghost sm" data-skip>Saltar</button></div>
+    el.innerHTML = `<div class="top"><span class="logo"><img class="mark" src="assets/logo.png" alt="Royal Solutions">Royal Solutions</span><button class="btn ghost sm" data-skip>Saltar</button></div>
       <div class="body"><div class="intro"><span class="num">0${i + 1} / 0${slides.length}</span><h1>${esc(s.title)}</h1><p>${esc(s.text)}</p></div>${s.figure ? `<div class="preview"><div class="figure">${s.figure}</div></div>` : ''}</div>
       <div class="bottom"><div class="steps" role="img" aria-label="Paso ${i + 1} de ${slides.length}">${slides.map((_, k) => `<span class="${k <= i ? 'on' : ''}"></span>`).join('')}</div><button class="btn primary block" data-next>${i === slides.length - 1 ? 'Empezar' : 'Siguiente'}</button></div>`;
     el.querySelector('[data-skip]').onclick = finish;
@@ -252,7 +251,7 @@ function loginView(cfg) {
   return {
     public: true, noBar: true, skeleton: false, live: false,
     render: () => `<div class="auth">
-      <div class="brand"><span class="logo" data-logo style="font-size:20px"><span class="mark">R</span>Royal Solutions</span><p class="muted" style="margin-top:8px">${esc(cfg.tagline)}</p></div>
+      <div class="brand"><span class="logo" data-logo style="font-size:20px"><img class="mark" src="assets/logo.png" alt="Royal Solutions">Royal Solutions</span><p class="muted" style="margin-top:8px">${esc(cfg.tagline)}</p></div>
       <form id="login" class="stack" novalidate>
         ${field('email', 'Email', 'email', 'autocomplete="email" required')}
         ${field('pass', 'Contraseña', 'password', 'autocomplete="current-password" required')}
@@ -478,7 +477,6 @@ function chatView(app) {
 /* ───────────── piezas compartidas de perfil ───────────── */
 export function profileFooter(app) {
   return `<div class="card list" style="margin-top:16px">
-    <button class="li" data-act="__theme">${icon(document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon')}<span class="grow">Tema ${document.documentElement.dataset.theme === 'dark' ? 'claro' : 'oscuro'}</span></button>
     <button class="li" data-act="__logout">${icon('logout')}<span class="grow">Cerrar sesión</span></button>
   </div>
   <p class="center xs faint mono" style="margin-top:20px;padding:8px;user-select:none" data-version>Royal Solutions ${APP_VERSION} · ${app}</p>`;

@@ -440,7 +440,7 @@ function render(navigated = true, force = false) {
   qs('#backSlot').innerHTML = view.back ? `<a class="btn ghost icon sm" href="#${view.back}" aria-label="Volver">${icon('left')}</a>` : '';
   const c = qs('#content');
   c.className = 'content' + (navigated ? ' enter' : '');
-  c.innerHTML = `<p class="small muted" style="margin-bottom:16px"><a href="presentacion.html">MVP avanzado y alcance completo</a> · Operación simulada · datos ficticios</p>` + view.render(m.params, query);
+  c.innerHTML = view.render(m.params, query);
   view.mount?.(c, m.params);
   updateChrome();
   if (navigated) window.scrollTo(0, 0); else window.scrollTo(0, keepScroll);

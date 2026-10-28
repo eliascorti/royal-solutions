@@ -15,7 +15,7 @@ function applyBlockBanner(ctx) {
   const p = ctx.provider;
   const chk = S.canApply(p);
   if (chk.ok) return '';
-  if (chk.debt) return `<div class="banner danger">${icon('lock')}<div class="grow"><b>Postulaciones pausadas.</b> ${esc(chk.reason)}</div><button class="btn sm" data-go="/billetera">Regularizar</button></div>`;
+  if (chk.debt) return `<div class="banner danger">${icon('lock')}<div class="grow"><b>Postulaciones pausadas.</b> La administración debe revisar las comisiones pendientes.</div></div>`;
   if (p.estado === 'observado') return `<div class="banner warn">${icon('alert')}<div class="grow"><b>Tu alta tiene observaciones.</b> ${esc(p.observacion?.motivo || '')}</div><button class="btn sm" data-go="/alta/4">Corregir</button></div>`;
   if (['pendiente_revision', 'en_revision'].includes(p.estado)) return `<div class="banner info">${icon('hourglass')}<div><b>Estamos revisando tu documentación.</b> Podés ver trabajos, pero para postularte necesitamos validar tu identidad y matrícula. Suele tardar menos de 24 h.</div></div>`;
   if (p.estado === 'borrador') return `<div class="banner warn">${icon('alert')}<div class="grow"><b>Completá tu alta</b> para empezar a postularte.</div><button class="btn sm primary" data-go="/alta/1">Seguir</button></div>`;
@@ -40,7 +40,7 @@ function jobRow(ctx, { r, km, mine }) {
     <span class="av" style="background:var(--surface-2);color:var(--text)">${icon(rb.icono)}</span>
     <div class="grow"><div class="row between"><span class="strong small ellipsis">${esc(r.descripcion)}</span></div>
     <div class="meta"><span class="mono">${km} km</span><span>${esc(S.barrio(r.direccion.barrio).nombre)}</span><span>${fmtRel(r.creadoEn, S.now())}</span>${r.presupuestoRef ? `<span class="mono">Ref. ${money(r.presupuestoRef)}</span>` : ''}</div>
-    <div class="row wrap gap-1" style="margin-top:4px">${r.urgente ? `<span class="badge accent">${icon('zap')}Urgente</span>` : ''}${r.cuando.tipo === 'asap' ? '<span class="badge">Lo antes posible</span>' : `<span class="badge">${fmtDay(r.cuando.fecha)} · ${FRANJAS[r.cuando.franja].split(' ')[0]}</span>`}<span class="badge outline">${plural(n, 'postulado', 'postulados')}</span>${mine ? '<span class="badge ok">Te postulaste</span>' : ''}${!workable ? '<span class="badge danger">Matrícula no vigente</span>' : ''}</div></div></button>`;
+    <div class="row wrap gap-1" style="margin-top:4px">${r.urgente ? `<span class="badge accent">${icon('zap')}Urgente</span>` : ''}${r.cuando.tipo === 'asap' ? '<span class="badge">Lo antes posible</span>' : `<span class="badge">${fmtDay(r.cuando.fecha)} · ${FRANJAS[r.cuando.franja].split(' ')[0]}</span>`}${mine ? '<span class="badge ok">Te postulaste</span>' : ''}${!workable ? '<span class="badge danger">Matrícula no vigente</span>' : ''}</div></div></button>`;
 }
 
 function orderCard(o) {
@@ -98,7 +98,7 @@ const PLANTILLAS = [
   'Estoy cerca de tu zona. Si te sirve paso en la franja que elegiste.',
 ];
 const trabajo = {
-  back: true, title: (ctx) => ctx.params.id, skeleton: 'detail', live: false,
+  back: true, title: '', skeleton: 'detail', live: false,
   render(ctx) {
     const r = S.request(ctx.params.id);
     if (!r) return empty('alert', 'Changa no encontrada', '');
@@ -118,13 +118,13 @@ const trabajo = {
       <div class="row wrap gap-1">${statusBadge('request', r.estado, L)}${r.urgente ? `<span class="badge accent">${icon('zap')}Urgente</span>` : ''}</div>
       <div class="row top">${icon(rb.icono, 'lg')}<div class="grow"><h1 style="font-size:19px">${esc(r.descripcion)}</h1><div class="small muted">${esc(rb.nombre)} · ${esc(S.barrio(r.direccion.barrio).nombre)} · <span class="mono">${km} km</span></div></div></div>
       ${r.fotos?.length ? `<div class="photos">${r.fotos.map((f) => `<div class="ph"><img src="${f}" alt="Foto del cliente"></div>`).join('')}</div>` : ''}
-      <dl class="kv card pad"><dt>Cuándo</dt><dd>${r.cuando.tipo === 'asap' ? 'Lo antes posible' : `${fmtDay(r.cuando.fecha)} · ${FRANJAS[r.cuando.franja]}`}</dd><dt>Presupuesto de referencia</dt><dd>${r.presupuestoRef ? moneyHtml(r.presupuestoRef) : 'Sin referencia'}</dd><dt>Pago previsto</dt><dd>${MEDIOS[r.medioPrevisto].label}</dd><dt>Publicada</dt><dd class="mono">${fmtRel(r.creadoEn, S.now())}</dd><dt>Postulados</dt><dd class="mono">${S.applicationsOf(r.id).length}</dd><dt>Comisión Royal</dt><dd class="mono">${rb.comision}%</dd></dl>
+      <dl class="kv card pad"><dt>Cuándo</dt><dd>${r.cuando.tipo === 'asap' ? 'Lo antes posible' : `${fmtDay(r.cuando.fecha)} · ${FRANJAS[r.cuando.franja]}`}</dd><dt>Presupuesto de referencia</dt><dd>${r.presupuestoRef ? moneyHtml(r.presupuestoRef) : 'Sin referencia'}</dd><dt>Pago previsto</dt><dd>${MEDIOS[r.medioPrevisto].label}</dd><dt>Publicada</dt><dd class="mono">${fmtRel(r.creadoEn, S.now())}</dd></dl>
       <div class="card list"><div class="li">${avatar(cu)}<div class="grow"><div class="small strong">${esc(cu.nombre)} ${esc(cu.apellido[0])}.</div><div class="xs muted">Cliente desde ${fmtDateY(cu.creadoEn)} · ${rc.count ? `${rc.avg.toFixed(1)} ★ como cliente (${rc.count})` : 'Sin calificaciones como cliente'}</div></div></div></div>
       <p class="xs faint">La dirección exacta se comparte cuando el cliente te contrata.</p>
       ${!open ? '<div class="banner">Esta changa ya no recibe postulaciones.</div>' : !chk.ok ? applyBlockBanner(ctx) : !workable ? `<div class="banner danger">${icon('badge')}<div>Tu matrícula de ${esc(rb.nombre.toLowerCase())} no está vigente. <a href="#/documentos">Renovala</a> para postularte.</div></div>` : `
       <div class="section-title"><h2>${mine ? 'Tu postulación' : 'Postularme'}</h2>${mine ? `<span class="xs faint mono">enviada ${fmtRel(mine.creadoEn, S.now())}</span>` : ''}</div>
       <form id="af" class="stack" novalidate>
-        <div class="field"><label for="pr">Tu precio</label><div class="input-group"><span class="prefix">$</span><input class="input" id="pr" inputmode="numeric" value="${sug.toLocaleString('es-AR')}"></div><span class="hint">Recibís <span class="mono" id="net">${money(sug * (1 - rb.comision / 100))}</span> después de la comisión de ${rb.comision}%.</span></div>
+        <div class="field"><label for="pr">Tu precio</label><div class="input-group"><span class="prefix">$</span><input class="input" id="pr" inputmode="numeric" value="${sug.toLocaleString('es-AR')}"></div></div>
         <div class="field"><label for="ms">Mensaje</label><textarea class="textarea" id="ms">${esc(mine?.mensaje || '')}</textarea><div class="chips" id="tpl">${PLANTILLAS.map((t, i) => `<button type="button" class="chip" data-i="${i}">Plantilla ${i + 1}</button>`).join('')}</div></div>
         <div class="row gap-3"><div class="field grow"><label for="fe">Fecha</label><input class="input mono" type="date" id="fe" value="${fecha}" min="${S.isoDate(S.now())}"></div><div class="field grow"><label for="fr">Franja</label><select class="select" id="fr">${Object.entries(FRANJAS).map(([k, v]) => `<option value="${k}" ${k === franja ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
       </form>`}
@@ -140,8 +140,7 @@ const trabajo = {
     const r = S.request(ctx.params.id);
     const pr = el.querySelector('#pr');
     if (!pr) return;
-    const pct = S.rubro(r.rubroId).comision;
-    pr.addEventListener('input', () => { const n = Number(pr.value.replace(/\D/g, '')); pr.value = n ? n.toLocaleString('es-AR') : ''; el.querySelector('#net').textContent = money(n * (1 - pct / 100)); });
+    pr.addEventListener('input', () => { const n = Number(pr.value.replace(/\D/g, '')); pr.value = n ? n.toLocaleString('es-AR') : ''; });
     el.querySelector('#tpl').onclick = (e) => { const b = e.target.closest('[data-i]'); if (b) el.querySelector('#ms').value = PLANTILLAS[b.dataset.i]; };
   },
   actions: {
@@ -209,10 +208,10 @@ const orden = {
         <dt>Dirección</dt><dd>${showAddr ? esc(o.direccion.calle) : `${esc(S.barrio(o.direccion.barrio).nombre)} <span class="xs faint">(completa al confirmar)</span>`}</dd>
         <dt>Cuándo</dt><dd>${o.asap ? 'Lo antes posible' : `${fmtDay(o.fecha)} · ${FRANJAS[o.franja]}`}</dd>
         <dt>Precio acordado</dt><dd>${moneyHtml(o.precioAcordado)}</dd>${o.montoFinal ? `<dt>Monto informado</dt><dd>${moneyHtml(o.montoFinal)}</dd>` : ''}
-        <dt>Medio de pago</dt><dd>${MEDIOS[o.medio].label}</dd><dt>Comisión (${o.comisionPct}%)</dt><dd>${moneyHtml(Math.round((o.montoFinal || o.precioAcordado) * o.comisionPct / 100))}${o.medio === 'efectivo' ? ' <span class="xs muted">diferida</span>' : ''}</dd>
+        <dt>Medio de pago</dt><dd>${MEDIOS[o.medio].label}</dd>
         ${pay ? `<dt>Pago</dt><dd>${statusBadge('payment', pay.estado, L)}</dd>` : ''}
       </dl>
-      ${o.medio === 'efectivo' && S.ACTIVE.includes(o.estado) ? `<div class="banner info">${icon('cash')}<div>Cobrás en mano. La comisión de ${o.comisionPct}% se suma a tu deuda y la saldás desde Billetera.</div></div>` : ''}
+
       <div class="section-title"><h2>Timeline</h2></div>
       <ul class="timeline">${[...o.timeline].reverse().map((h, i) => `<li class="${i === 0 ? 'now' : ''}"><div>${esc(h.texto)}</div><div class="t">${fmtDate(h.t)} ${fmtTime(h.t)} · ${esc(h.actor)}</div></li>`).join('')}</ul>
       ${o.ejecutada && ['confirmada','finalizada'].includes(o.estado) ? `<button class="btn ghost block" data-act="report">${icon('flag')}Reportar un problema</button>` : ''}
@@ -237,7 +236,7 @@ const orden = {
       const s = sheet({
         title: 'Finalizar trabajo',
         body: `<div class="stack"><div class="field"><label for="mf">Monto ${o.medio === 'efectivo' ? 'cobrado en efectivo' : 'a cobrar'}</label><div class="input-group"><span class="prefix">$</span><input class="input" id="mf" inputmode="numeric" value="${o.precioAcordado.toLocaleString('es-AR')}"></div><span class="hint">Acordado: <span class="mono">${money(o.precioAcordado)}</span>. El cliente debe confirmar el monto informado (CU-17).</span></div>
-          <p class="small muted">El cliente confirma el monto en su app. ${o.medio === 'efectivo' ? `Se registra una comisión de ${o.comisionPct}% a saldar.` : `La comisión de ${o.comisionPct}% se descuenta al acreditarse.`}</p></div>`,
+          <p class="small muted">El cliente confirma el monto y registra el pago desde su app.</p></div>`,
         footer: '<button class="btn primary block" data-ok>Informar y finalizar</button>',
       });
       const inp = s.el.querySelector('#mf');
@@ -297,33 +296,27 @@ const calificar = {
 };
 
 /* ───────────── Agenda ───────────── */
-let agendaDay = null, agendaMode = 'dia';
+let agendaDay = null;
 const agenda = {
   tab: '/agenda', title: 'Agenda',
   render(ctx) {
     const p = ctx.provider;
     const days = Array.from({ length: 7 }, (_, i) => S.isoDate(S.now() + i * 86400000));
     if (!agendaDay || !days.includes(agendaDay)) agendaDay = days[0];
-    const orders = S.ordersOfProvider(p.id).filter((o) => ['confirmada', 'pendiente_confirmacion'].includes(o.estado));
-    const byDay = (d) => orders.filter((o) => (o.asap ? S.isoDate(o.creadoEn) : o.fecha) === d);
-    const dow = (d) => ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'][new Date(d + 'T12:00:00').getDay()];
-    const slotHtml = (d) => Object.entries(FRANJAS).map(([k, v]) => {
-      const os = byDay(d).filter((o) => o.franja === k || (o.asap && S.currentFranja(o.creadoEn) === k));
-      const avail = (p.disponibilidad[dow(d)] || []).includes(k);
-      return `<div class="slot"><div class="h">${v.split(' ')[1]}</div><div class="c">${os.length ? os.map((o) => `<button class="active-order" style="padding:8px 10px" data-go="/orden/${o.id}"><div class="row between"><span class="small strong">${esc(S.rubro(o.rubroId).nombre)} · ${esc(S.user(o.clienteId).nombre)}</span>${statusBadge('order', o.estado, L)}</div><div class="xs muted">${esc(S.barrio(o.direccion.barrio).nombre)} · <span class="mono">${o.id}</span></div></button>`).join('') : avail ? '<span class="xs faint">Libre</span>' : '<div class="blocked">Franja bloqueada · fuera de tu disponibilidad</div>'}</div></div>`;
+    const orders = S.ordersOfProvider(p.id).filter(o => ['confirmada', 'pendiente_confirmacion'].includes(o.estado));
+    const byDay = d => orders.filter(o => (o.asap ? S.isoDate(o.creadoEn) : o.fecha) === d);
+    const dow = d => ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'][new Date(d + 'T12:00:00').getDay()];
+    const slots = Object.entries(FRANJAS).map(([k, v]) => {
+      const os = byDay(agendaDay).filter(o => o.franja === k || (o.asap && S.currentFranja(o.creadoEn) === k));
+      if (!os.length && !(p.disponibilidad[dow(agendaDay)] || []).includes(k)) return '';
+      return `<div class="slot"><div class="h">${v.split(' ')[1]}</div><div class="c">${os.length ? os.map(o => `<button class="active-order" style="padding:8px 10px" data-go="/orden/${o.id}"><div class="row between"><span class="small strong">${esc(S.rubro(o.rubroId).nombre)} · ${esc(S.user(o.clienteId).nombre)}</span>${statusBadge('order', o.estado, L)}</div><div class="xs muted">${esc(S.barrio(o.direccion.barrio).nombre)} · <span class="mono">${o.id}</span></div></button>`).join('') : '<span class="xs faint">Libre</span>'}</div></div>`;
     }).join('');
-    return `<div class="stack">
-      <div class="seg"><button class="${agendaMode === 'dia' ? 'on' : ''}" data-act="mode" data-v="dia">Día</button><button class="${agendaMode === 'semana' ? 'on' : ''}" data-act="mode" data-v="semana">Semana</button></div>
-      ${agendaMode === 'dia' ? `<div class="week">${days.map((d) => { const dd = new Date(d + 'T12:00:00'); return `<button class="${d === agendaDay ? 'on' : ''}" data-act="day" data-v="${d}">${DIAS_LABEL[dow(d)]}<b>${dd.getDate()}</b>${byDay(d).length ? '<i></i>' : '<span style="height:5px"></span>'}</button>`; }).join('')}</div>
-      <div><div class="upper" style="margin-bottom:4px">${fmtDay(agendaDay)}</div>${slotHtml(agendaDay)}</div>`
-        : days.map((d) => `<div><div class="upper">${fmtDay(d)}</div>${byDay(d).length ? `<div class="card list">${byDay(d).map((o) => `<button class="li" data-go="/orden/${o.id}">${rubroIcon(o.rubroId)}<div class="grow"><div class="small strong">${esc(o.descripcion)}</div><div class="xs muted">${o.asap ? 'Lo antes posible' : FRANJAS[o.franja]} · ${esc(S.barrio(o.direccion.barrio).nombre)}</div></div>${statusBadge('order', o.estado, L)}</button>`).join('')}</div>` : '<p class="xs faint">Sin órdenes</p>'}</div>`).join('')}
-      <button class="btn block" data-go="/historial">${icon('clock')}Historial de órdenes</button>
-    </div>`;
+    return `<div class="stack"><div class="upper">Día</div>
+      <div class="week">${days.map(d => `<button class="${d === agendaDay ? 'on' : ''}" data-act="day" data-v="${d}">${DIAS_LABEL[dow(d)]}<b>${new Date(d + 'T12:00:00').getDate()}</b>${byDay(d).length ? '<i></i>' : '<span style="height:5px"></span>'}</button>`).join('')}</div>
+      <div><div class="upper" style="margin-bottom:4px">${fmtDay(agendaDay)}</div>${slots || empty('calendar', 'Sin horarios para este día', 'Podés actualizar tus horarios en Zona y disponibilidad.')}</div>
+      <button class="btn block" data-go="/historial">${icon('clock')}Historial de órdenes</button></div>`;
   },
-  actions: {
-    day: (b, e, ctx) => { agendaDay = b.dataset.v; ctx.refresh(); },
-    mode: (b, e, ctx) => { agendaMode = b.dataset.v; ctx.refresh(); },
-  },
+  actions: { day: (b, e, ctx) => { agendaDay = b.dataset.v; ctx.refresh(); } },
 };
 
 const historial = {
@@ -336,44 +329,6 @@ const historial = {
   },
 };
 
-/* ───────────── Billetera ───────────── */
-const billetera = {
-  tab: '/billetera', title: 'Billetera',
-  render(ctx) {
-    const p = ctx.provider;
-    const db = S.getDb();
-    const movs = db.ledger.filter((m) => m.providerId === p.id).sort((a, b) => b.t - a.t);
-    const d0 = new Date(S.now()); d0.setDate(1); d0.setHours(0, 0, 0, 0);
-    const mes = movs.filter((m) => m.t >= d0.getTime());
-    const ingresos = mes.filter((m) => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0);
-    const trabajos = mes.filter((m) => m.tipo === 'ingreso').length;
-    const deducidas = -mes.filter((m) => m.tipo === 'comision_deducida').reduce((a, m) => a + m.monto, 0);
-    const deuda = S.debtOf(p.id);
-    const lim = db.config.limiteDeuda;
-    const pct = Math.min(100, (deuda / lim) * 100);
-    const MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][d0.getMonth()];
-    const label = { ingreso: 'Cobro', comision_deducida: 'Comisión deducida', deuda_efectivo: 'Comisión por efectivo', pago_deuda: 'Pago de deuda', ajuste_disputa: 'Ajuste por disputa' };
-    return `<div class="stack">
-      <div class="card pad"><div class="upper">Ingresos de ${MES}</div><div class="big">${money(ingresos)}</div><div class="small muted">${plural(trabajos, 'trabajo cobrado', 'trabajos cobrados')}</div></div>
-      <div class="stat-grid"><div><div class="xs muted">Comisiones deducidas</div><div class="v">${money(deducidas)}</div><div class="xs faint">pagos digitales</div></div><div><div class="xs muted">Deuda por efectivo</div><div class="v" style="color:${deuda >= lim ? 'var(--danger)' : 'inherit'}">${money(deuda)}</div><div class="xs faint">a saldar</div></div></div>
-      <div class="card pad stack" style="gap:8px"><div class="row between small"><span>Límite de deuda</span><span class="mono">${money(deuda)} / ${money(lim)}</span></div><div class="bar ${pct >= 100 ? 'danger' : pct > 70 ? 'warn' : 'ok'}"><i style="width:${pct}%"></i></div>
-        ${deuda >= lim ? `<div class="banner danger">${icon('lock')}<div><b>Postulaciones bloqueadas.</b> Superaste el límite de ${money(lim)}. Regularizá para volver a postularte.</div></div>` : `<p class="xs muted">Cuando cobrás en efectivo, la comisión (3–5%) queda como deuda. Si llegás a ${money(lim)} se pausan tus postulaciones.</p>`}
-        <button class="btn ${deuda >= lim ? 'primary' : ''} block" data-act="pay" ${deuda <= 0 ? 'disabled' : ''}>Regularizar ${deuda > 0 ? money(deuda) : ''}</button></div>
-      <div class="section-title"><h2>Movimientos</h2></div>
-      ${movs.length ? `<div class="card list">${movs.slice(0, 40).map((m) => `<div class="li"><div class="grow"><div class="small">${label[m.tipo]}</div><div class="xs muted">${esc(m.detalle)} · ${fmtDate(m.t)}</div></div><span class="money small" style="color:${m.tipo === 'ingreso' || m.tipo === 'pago_deuda' ? 'var(--ok)' : m.tipo === 'deuda_efectivo' ? 'var(--warn)' : 'var(--text-2)'}">${m.tipo === 'comision_deducida' ? '− ' + money(-m.monto) : m.tipo === 'deuda_efectivo' ? '+ ' + money(m.monto) + ' deuda' : m.tipo === 'pago_deuda' ? '− ' + money(m.monto) + ' deuda' : money(m.monto)}</span></div>`).join('')}</div>` : empty('wallet', 'Sin movimientos', 'Tus cobros y comisiones van a aparecer acá.')}
-    </div>`;
-  },
-  actions: {
-    pay(b, e, ctx) {
-      const deuda = S.debtOf(ctx.provider.id);
-      const s = sheet({ title: 'Regularizar deuda', body: `<div class="stack"><div class="card pad center"><div class="upper">Total adeudado</div><div class="big">${money(deuda)}</div></div><div class="stack" id="pm" style="gap:8px">${['mercadopago', 'transferencia'].map((m, i) => `<button type="button" class="opt ${i === 0 ? 'on' : ''}" data-v="${m}">${icon(MEDIOS[m].icono)}<span class="grow small">${MEDIOS[m].label}</span></button>`).join('')}</div><p class="xs faint">Pago simulado para la demo.</p></div>`, footer: `<button class="btn primary block" data-ok>Pagar ${money(deuda)}</button>` });
-      s.el.querySelector('#pm').onclick = (ev) => { const bt = ev.target.closest('[data-v]'); if (!bt) return; s.el.querySelectorAll('#pm .opt').forEach((x) => x.classList.toggle('on', x === bt)); };
-      const ok = s.el.querySelector('[data-ok]');
-      ok.onclick = () => run(ok, async () => { await S.net(700, 1200); S.payDebt(ctx.provider.id, deuda, me(ctx), s.el.querySelector('#pm .on').dataset.v); s.close(); toast('Deuda saldada. Ya podés postularte.', 'ok'); });
-    },
-  },
-};
-
 /* ───────────── Reputación ───────────── */
 const reputacion = {
   back: true, title: 'Reputación',
@@ -382,10 +337,10 @@ const reputacion = {
     const st = S.providerStats(p);
     const r = st.rating;
     return `<div class="stack">
-      <div class="stat-grid"><div><div class="xs muted">Calificación</div><div class="v">${r.count ? r.avg.toFixed(2) : '—'}</div>${r.count ? stars(r.avg) : ''}</div><div><div class="xs muted">Reseñas verificadas</div><div class="v">${r.count}</div></div><div><div class="xs muted">Cancelaciones tardías</div><div class="v">${p.cancelacionesTardias}</div></div></div>
+      <div class="stat-grid"><div><div class="xs muted">Calificación</div><div class="v">${r.count ? r.avg.toFixed(2) : '—'}</div>${r.count ? stars(r.avg) : ''}</div><div><div class="xs muted">Reseñas verificadas</div><div class="v">${r.count}</div></div></div>
       ${r.count ? `<div class="dist">${[5, 4, 3, 2, 1].map((n) => `<span>${n}</span><div class="bar"><i style="width:${(r.dist[n - 1] / r.count) * 100}%"></i></div><span class="right">${r.dist[n - 1]}</span>`).join('')}</div>` : ''}
       <div class="section-title"><h2>Reseñas recibidas</h2></div>
-      ${r.reviews.length || S.getDb().reviews.some((x) => x.destId === ctx.user.id && x.estado === 'reportada') ? `<div class="card list">${S.getDb().reviews.filter((x) => x.destId === ctx.user.id && x.dir === 'c2p').sort((a, b) => b.t - a.t).slice(0, 30).map((rv) => { const au = S.user(rv.autorId); return `<div class="li" style="flex-direction:column;align-items:flex-start;gap:4px"><div class="row between" style="width:100%">${stars(rv.estrellas)}<span class="xs faint mono">${fmtDate(rv.t)} · ${esc(rv.orderId)}</span></div>${rv.comentario ? `<p class="small">${esc(rv.comentario)}</p>` : ''}<div class="row between" style="width:100%"><span class="xs muted">${esc(au.nombre)} ${esc(au.apellido[0])}. · ${esc(S.rubro(rv.rubroId).nombre)}</span>${rv.estado === 'reportada' ? '<span class="badge warn">En moderación</span>' : rv.estado === 'baja' ? '<span class="badge">Dada de baja</span>' : rv.estrellas <= 3 ? `<button class="btn ghost sm" data-act="report" data-id="${rv.id}">${icon('flag', 'sm')}Reportar</button>` : ''}</div></div>`; }).join('')}</div>` : empty('star', 'Todavía no tenés reseñas', 'Solo califican clientes con una orden finalizada: tus reseñas son verificadas.')}
+      ${r.reviews.length || S.getDb().reviews.some((x) => x.destId === ctx.user.id && x.estado === 'reportada') ? `<div class="card list">${S.getDb().reviews.filter((x) => x.destId === ctx.user.id && x.dir === 'c2p').sort((a, b) => b.t - a.t).slice(0, 30).map((rv) => { const au = S.user(rv.autorId); return `<div class="li" style="flex-direction:column;align-items:flex-start;gap:4px"><div class="row between" style="width:100%">${stars(rv.estrellas)}<span class="xs faint mono">${fmtDate(rv.t)}</span></div>${rv.comentario ? `<p class="small">${esc(rv.comentario)}</p>` : ''}<div class="row between" style="width:100%"><span class="xs muted">${esc(au.nombre)} ${esc(au.apellido[0])}. · ${esc(S.rubro(rv.rubroId).nombre)}</span>${rv.estado === 'reportada' ? '<span class="badge warn">En moderación</span>' : rv.estado === 'baja' ? '<span class="badge">Dada de baja</span>' : rv.estrellas <= 3 ? `<button class="btn ghost sm" data-act="report" data-id="${rv.id}">${icon('flag', 'sm')}Reportar</button>` : ''}</div></div>`; }).join('')}</div>` : empty('star', 'Todavía no tenés reseñas', 'Solo califican clientes con una orden finalizada: tus reseñas son verificadas.')}
     </div>`;
   },
   actions: {
@@ -412,8 +367,8 @@ const perfil = {
       <div class="card list">
         <button class="li" data-go="/reputacion">${icon('star')}<span class="grow">Reputación</span>${rating(st.rating.avg, st.rating.count)}${icon('right', 'sm chev')}</button>
         <button class="li" data-go="/documentos">${icon('file')}<span class="grow">Documentos y verificación</span>${docAlert ? '<span class="dot warn"></span>' : ''}${icon('right', 'sm chev')}</button>
-        <button class="li" data-go="/alta/2">${icon('briefcase')}<span class="grow">Rubros y descripción</span>${icon('right', 'sm chev')}</button>
-        <button class="li" data-go="/alta/3">${icon('map')}<span class="grow">Zona y disponibilidad</span><span class="xs muted">${plural(p.barrios.length, 'barrio')}</span>${icon('right', 'sm chev')}</button>
+        <button class="li" data-go="/perfil/rubros">${icon('briefcase')}<span class="grow">Rubros y descripción</span>${icon('right', 'sm chev')}</button>
+        <button class="li" data-go="/perfil/zona">${icon('map')}<span class="grow">Zona y disponibilidad</span><span class="xs muted">${plural(p.barrios.length, 'barrio')}</span>${icon('right', 'sm chev')}</button>
         <button class="li" data-go="/historial">${icon('clock')}<span class="grow">Historial de órdenes</span>${icon('right', 'sm chev')}</button>
         <a class="li" href="cliente.html">${icon('external')}<span class="grow">Ir a la app de cliente</span></a>
       </div>
@@ -563,20 +518,21 @@ const alta1 = {
   },
 };
 
+const editingProfile = () => location.hash.startsWith('#/perfil/');
 const alta2 = {
-  back: true, title: 'Alta como prestador', skeleton: false, live: false,
+  back: true, title: () => editingProfile() ? 'Rubros y descripción' : 'Alta como prestador', skeleton: false, live: false,
   render(ctx) {
     const p = ctx.provider;
     alta2._sel = new Set(p?.rubros || []);
     alta2._tags = new Set(p?.tags || []);
-    return `${altaHeader(2, p)}<div class="stack">
+    return `${editingProfile() ? '' : altaHeader(2, p)}<div class="stack">
       <h2>¿Qué trabajos hacés?</h2>
-      <div class="stack" id="rbs" style="gap:8px">${RUBROS.map((r) => `<button type="button" class="opt ${alta2._sel.has(r.id) ? 'on' : ''}" data-id="${r.id}">${icon(r.icono)}<div class="grow"><div class="small strong">${esc(r.nombre)}</div><div class="xs muted">${RIESGO_LABEL[r.riesgo]} · comisión ${r.comision}%${r.riesgo === 'alto' ? ' · matrícula obligatoria' : r.riesgo === 'medio' ? ' · antecedentes' : ''}</div></div></button>`).join('')}</div>
+      <div class="stack" id="rbs" style="gap:8px">${RUBROS.map((r) => `<button type="button" class="opt ${alta2._sel.has(r.id) ? 'on' : ''}" data-id="${r.id}">${icon(r.icono)}<div class="grow"><div class="small strong">${esc(r.nombre)}</div></div></button>`).join('')}</div>
       <div class="field"><span class="label">Especialidades</span><div class="chips wrap" id="tags"></div></div>
       <div class="field"><label for="ds">Descripción de tu servicio</label><textarea class="textarea" id="ds" maxlength="280" placeholder="Ej.: gasista matriculado, instalación de artefactos y pruebas de hermeticidad.">${esc(p?.descripcion || '')}</textarea></div>
     </div>`;
   },
-  cta: () => '<button class="btn" data-act="__back">Atrás</button><button class="btn primary" data-act="next">Siguiente</button>',
+  cta: () => editingProfile() ? '<button class="btn primary" data-act="next">Guardar cambios</button>' : '<button class="btn" data-act="__back">Atrás</button><button class="btn primary" data-act="next">Siguiente</button>',
   mount(el) {
     const drawTags = () => { el.querySelector('#tags').innerHTML = [...alta2._sel].flatMap((r) => S.rubro(r).tags).map((t) => `<button type="button" class="chip ${alta2._tags.has(t) ? 'on' : ''}" data-t="${esc(t)}">${esc(t)}</button>`).join('') || '<span class="xs faint">Elegí al menos un rubro</span>'; };
     el.querySelector('#rbs').onclick = (e) => { const b = e.target.closest('[data-id]'); if (!b) return; const id = b.dataset.id; alta2._sel.has(id) ? alta2._sel.delete(id) : alta2._sel.add(id); b.classList.toggle('on'); drawTags(); };
@@ -587,19 +543,19 @@ const alta2 = {
     next(b, e, ctx) {
       if (!alta2._sel.size) { toast('Elegí al menos un rubro', 'err'); return; }
       const valid = [...alta2._sel].flatMap((r) => S.rubro(r).tags);
-      run(b, async () => { await S.net(); S.saveProviderDraft(ctx.user.id, { rubros: [...alta2._sel], tags: [...alta2._tags].filter((t) => valid.includes(t)), descripcion: qs('#ds').value.trim() }); go('/alta/3'); });
+      run(b, async () => { await S.net(); S.saveProviderDraft(ctx.user.id, { rubros: [...alta2._sel], tags: [...alta2._tags].filter((t) => valid.includes(t)), descripcion: qs('#ds').value.trim() }); go(editingProfile() ? '/perfil' : '/alta/3'); });
     },
   },
 };
 
 const alta3 = {
-  back: true, title: 'Alta como prestador', skeleton: false, live: false,
+  back: true, title: () => editingProfile() ? 'Zona y disponibilidad' : 'Alta como prestador', skeleton: false, live: false,
   render(ctx) {
     const p = ctx.provider;
     alta3._b = new Set(p?.barrios || []);
     alta3._d = JSON.parse(JSON.stringify(p?.disponibilidad && Object.keys(p.disponibilidad).length ? p.disponibilidad : { lun: ['manana', 'tarde'], mar: ['manana', 'tarde'], mie: ['manana', 'tarde'], jue: ['manana', 'tarde'], vie: ['manana', 'tarde'], sab: ['manana'], dom: [] }));
-    return `${altaHeader(3, p)}<div class="stack">
-      <h2>¿Dónde trabajás?</h2><p class="xs muted">Barrios habilitados en el lanzamiento de Córdoba capital.</p>
+    return `${editingProfile() ? '' : altaHeader(3, p)}<div class="stack">
+      <h2>¿Dónde trabajás?</h2><p class="xs muted">Elegí los barrios en los que ofrecés tus servicios.</p>
       <div id="mapb">${mapSvg({ highlight: [...alta3._b] })}</div>
       <div class="chips wrap" id="bs">${BARRIOS.filter((b) => S.getDb().config.barriosHabilitados.includes(b.id)).map((b) => `<button type="button" class="chip ${alta3._b.has(b.id) ? 'on' : ''}" data-id="${b.id}">${esc(b.nombre)}</button>`).join('')}</div>
       <h2 style="margin-top:8px">¿Cuándo?</h2>
@@ -608,7 +564,7 @@ const alta3 = {
       </tbody></table></div>
     </div>`;
   },
-  cta: () => '<button class="btn" data-act="__back">Atrás</button><button class="btn primary" data-act="next">Siguiente</button>',
+  cta: () => editingProfile() ? '<button class="btn primary" data-act="next">Guardar cambios</button>' : '<button class="btn" data-act="__back">Atrás</button><button class="btn primary" data-act="next">Siguiente</button>',
   mount(el) {
     el.querySelector('#bs').onclick = (e) => { const b = e.target.closest('[data-id]'); if (!b) return; const id = b.dataset.id; alta3._b.has(id) ? alta3._b.delete(id) : alta3._b.add(id); b.classList.toggle('on'); el.querySelector('#mapb').innerHTML = mapSvg({ highlight: [...alta3._b] }); };
     el.querySelector('#disp').onchange = (e) => { const c = e.target; const d = c.dataset.d, f = c.dataset.f; alta3._d[d] = alta3._d[d] || []; alta3._d[d] = c.checked ? [...new Set([...alta3._d[d], f])] : alta3._d[d].filter((x) => x !== f); };
@@ -617,7 +573,7 @@ const alta3 = {
     next(b, e, ctx) {
       if (!alta3._b.size) { toast('Elegí al menos un barrio', 'err'); return; }
       if (!Object.values(alta3._d).some((x) => x.length)) { toast('Marcá al menos una franja disponible', 'err'); return; }
-      run(b, async () => { await S.net(); S.saveProviderDraft(ctx.user.id, { barrios: [...alta3._b], disponibilidad: alta3._d }); go(ctx.provider && ['aprobado'].includes(ctx.provider.estado) ? '/perfil' : '/alta/4'); if (ctx.provider?.estado === 'aprobado') toast('Zona y disponibilidad actualizadas', 'ok'); });
+      run(b, async () => { await S.net(); S.saveProviderDraft(ctx.user.id, { barrios: [...alta3._b], disponibilidad: alta3._d }); go(editingProfile() || ctx.provider && ['aprobado'].includes(ctx.provider.estado) ? '/perfil' : '/alta/4'); if (ctx.provider?.estado === 'aprobado') toast('Zona y disponibilidad actualizadas', 'ok'); });
     },
   },
 };
@@ -677,21 +633,22 @@ const mensajes = {
 };
 
 const fig1 = `<div class="stack" style="gap:8px"><div class="row between small"><span class="strong">Pierde agua la canilla</span><span class="badge accent">Urgente</span></div><div class="row between xs muted"><span class="mono">0,8 km · Güemes</span><span class="mono">Ref. $ 30.000</span></div></div>`;
-const fig2 = `<div class="stack" style="gap:6px"><div class="row between small"><span>Comisión Royal</span><span class="mono strong">3–5%</span></div><div class="row between small muted"><span>Otras plataformas</span><span class="mono">hasta 40%</span></div></div>`;
+const fig2 = `<div class="stack" style="gap:6px"><span class="badge">${icon('calendar')}Agenda diaria</span><span class="small">Tus horarios y trabajos confirmados, en un solo lugar.</span></div>`;
 const fig3 = `<div class="stack" style="gap:6px"><span class="badge ok">${icon('shield')}Identidad verificada</span><span class="badge ok">${icon('badge')}Matrícula vigente</span><span class="badge">${icon('star')}Reseñas de trabajos reales</span></div>`;
 
 startMobileApp({
-  app: 'prestador', theme: 'dark', home: '/trabajos', afterRegister: '/alta/1',
+  app: 'prestador', theme: 'light', home: '/trabajos', afterRegister: '/alta/1',
   parents: {
     '/trabajo/:id': '/trabajos', '/orden/:id': '/trabajos', '/calificar/:id': '/orden/:id', '/historial': '/agenda',
+    '/perfil/rubros': '/perfil', '/perfil/zona': '/perfil',
     '/reputacion': '/perfil', '/documentos': '/perfil', '/alta': '/perfil', '/alta/1': '/perfil', '/alta/2': '/alta/1', '/alta/3': '/alta/2',
     '/alta/4': '/alta/3', '/alta/5': '/alta/4', '/chat/:id': '/mensajes', '/notificaciones': '/trabajos', '/registro': '/login', '/recuperar': '/login', '/recuperar/:token': '/login',
   },
   tagline: 'Conseguí changas cerca, cobrá como quieras y construí tu reputación.',
-  quickLogins: [{ label: 'Entrar como Ramiro — gasista matriculado', email: 'ramiro@demo.com' }, { label: 'Entrar como Alejandro — alta observada', email: 'alejandro.paredes@demo.com' }, { label: 'Entrar como Daniel — bloqueado por deuda', email: 'daniel.toledo@demo.com' }],
+  quickLogins: [{ label: 'Entrar como Ramiro', email: 'ramiro@demo.com' }, { label: 'Entrar como Alejandro', email: 'alejandro.paredes@demo.com' }, { label: 'Entrar como Daniel', email: 'daniel.toledo@demo.com' }],
   onboarding: [
     { title: 'Changas cerca tuyo, todos los días', text: 'Ves los trabajos de tus rubros ordenados por distancia y te postulás con tu precio.', figure: fig1 },
-    { title: 'Comisión baja, cobrás como quieras', text: 'Efectivo, transferencia o Mercado Pago. Si cobrás en mano, la comisión la saldás después.', figure: fig2 },
+    { title: 'Organizá tus trabajos', text: 'Elegí tu zona y disponibilidad, confirmá los trabajos y revisá tus compromisos en la agenda diaria.', figure: fig2 },
     { title: 'Tu reputación, verificada', text: 'Validamos tu identidad y matrícula una vez. Cada trabajo suma reseñas reales a tu perfil.', figure: fig3 },
   ],
   onUser(ctx) { ctx.provider = ctx.user ? S.providerByUser(ctx.user.id) : null; },
@@ -704,7 +661,6 @@ startMobileApp({
     { path: '/trabajos', label: 'Trabajos', icon: 'briefcase', badge: (ctx) => S.ordersOfProvider(ctx.provider?.id).filter((o) => o.estado === 'pendiente_confirmacion').length },
     { path: '/agenda', label: 'Agenda', icon: 'calendar' },
     { path: '/mensajes', label: 'Mensajes', icon: 'message', badge: (ctx) => S.unreadMessages(ctx.user.id) },
-    { path: '/billetera', label: 'Billetera', icon: 'wallet', badge: (ctx) => (ctx.provider && S.debtOf(ctx.provider.id) >= S.getDb().config.limiteDeuda ? 1 : 0) },
     { path: '/perfil', label: 'Perfil', icon: 'user' },
   ],
   routes: {
@@ -715,9 +671,10 @@ startMobileApp({
     '/agenda': agenda,
     '/historial': historial,
     '/mensajes': mensajes,
-    '/billetera': billetera,
     '/reputacion': reputacion,
     '/perfil': perfil,
+    '/perfil/rubros': alta2,
+    '/perfil/zona': alta3,
     '/documentos': documentos,
     '/alta': alta,
     '/alta/1': alta1, '/alta/2': alta2, '/alta/3': alta3, '/alta/4': alta4, '/alta/5': alta5,

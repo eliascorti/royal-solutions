@@ -4,37 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Royal Solutions</title>
-  <meta name="description" content="Royal Solutions — prototipo académico de oficios y changas. Demo navegable: app cliente, app prestador y panel admin.">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23E8590C'/%3E%3Ctext x='16' y='22' font-family='monospace' font-size='18' font-weight='700' fill='white' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
-  <script>try { document.documentElement.dataset.theme = localStorage.getItem('rs_theme_index') || 'light'; } catch (e) { document.documentElement.dataset.theme = 'light'; }</script>
+  <meta name="description" content="Royal Solutions — app cliente y app prestador para contratar y ofrecer servicios.">
+  <link rel="icon" href="assets/logo.png" type="image/png">
+  <script>document.documentElement.dataset.theme = "light";</script>
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/base.css">
   <style>
     body { min-height: 100vh; }
-    .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 16px 48px; }
-    header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 48px; }
-    .logo { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
-    .logo .mark { width: 24px; height: 24px; background: var(--accent); color: var(--accent-text); border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
-    .hero h1 { font-size: 34px; line-height: 1.15; letter-spacing: -.02em; max-width: 720px; }
-    .hero p { color: var(--text-2); font-size: var(--fs-lg); max-width: 640px; margin-top: 12px; }
-    .apps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r-card); overflow: hidden; margin-top: 40px; }
-    .app { background: var(--surface); padding: 20px; display: flex; flex-direction: column; gap: 10px; text-decoration: none; color: inherit; min-height: 180px; }
-    a.app:hover { background: var(--surface-2); }
-    .app .k { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-3); }
-    .app h2 { font-size: var(--fs-lg); }
-    .app p { color: var(--text-2); font-size: var(--fs-sm); flex: 1; }
-    .app .go { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); font-weight: 500; color: var(--accent); }
-    .app.off { opacity: .55; cursor: not-allowed; }
-    .row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 24px; }
-    .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--border); }
-    .facts b { display: block; font-family: var(--font-mono); font-size: 22px; font-weight: 500; }
-    .facts span { font-size: var(--fs-sm); color: var(--text-2); }
-    .note { margin-top: 40px; font-size: var(--fs-sm); color: var(--text-3); }
-    /* vista demo */
+
     .demo { display: none; min-height: 100vh; padding: 16px; flex-direction: column; gap: 12px; background: var(--surface-3); }
     body.demo-on .wrap { display: none; }
     body.demo-on .demo { display: flex; }
-    .demo-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
     .phones { display: flex; gap: 56px; justify-content: center; align-items: flex-start; flex: 1; }
     .phone { display: flex; flex-direction: column; gap: 10px; align-items: center; }
     .phone .lbl { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-2); text-transform: uppercase; letter-spacing: .06em; }
@@ -58,76 +38,29 @@
     .glass.light .status { background: #F6F4F1; color: #1F1B17; } .glass.light .homebar { background: #1F1B17; }
     .glass.dark .status { background: #141210; color: #F1ECE6; } .glass.dark .homebar { background: #F1ECE6; }
     @media (max-width: 900px) {
-      .apps, .facts { grid-template-columns: 1fr; }
-      .facts { grid-template-columns: 1fr 1fr; }
-      .hero h1 { font-size: 26px; }
       .phones { flex-direction: column; align-items: center; }
     }
   </style>
 </head>
-<body>
-  <div class="wrap">
-    <header class="top">
-      <span class="logo"><span class="mark">R</span>Royal Solutions</span>
-      <span class="badge outline mono">MVP avanzado · v0.10.0 · Demo académica</span>
-    </header>
-
-    <section class="hero">
-      <h1>Oficios y changas cerca tuyo, con reputación verificada y acuerdo dentro de la plataforma.</h1>
-      <p>Prototipo funcional con datos ficticios y ampliaciones del alcance completo identificadas. Las apps comparten el mismo estado en este navegador: lo que hacés en una se refleja en las otras en tiempo real.</p>
-      <div class="row-actions">
-        <button class="btn primary" id="demoBtn">Vista demo · cliente + prestador</button>
-        <a class="btn" href="cliente.html">Abrir app cliente</a>
-        <a class="btn" href="presentacion.html">MVP, alcance completo y exposición</a>
-      </div>
-    </section>
-
-    <nav class="apps" aria-label="Aplicaciones">
-      <a class="app" href="cliente.html">
-        <span class="k">01 · MOBILE</span><h2>App Cliente</h2>
-        <p>Publicar una solicitud, comparar postulaciones, elegir fecha y prestador, registrar el pago y calificar.</p>
-        <span class="go">Entrar como Lucía →</span>
-      </a>
-      <a class="app" href="prestador.html">
-        <span class="k">02 · MOBILE</span><h2>App Prestador</h2>
-        <p>Alta, certificados, postulación con precio y mensaje, confirmación de órdenes y comisión diferida por efectivo.</p>
-        <span class="go">Entrar como Ramiro →</span>
-      </a>
-      <a class="app" href="admin.html">
-        <span class="k">03 · WEB</span><h2>Panel Admin</h2>
-        <p>Usuarios, certificados, órdenes y pagos, moderación de reseñas y reportes. Operación representada con datos locales.</p>
-        <span class="go">Entrar como Operaciones →</span>
-      </a>
-    </nav>
-
-    <section class="facts" aria-label="Diferenciales">
-      <div><b>3–5%</b><span>rango de comisión del documento; valores de demo</span></div>
-      <div><b>DNI + matrícula</b><span>verificación simulada · alcance completo</span></div>
-      <div><b>Efectivo</b><span>con comisión diferida, además de digital</span></div>
-      <div><b>Por orden</b><span>reseñas de participantes; ejemplos ficticios</span></div>
-    </section>
-
-    <p class="note"><b>Equipo actual:</b> Corti · Cavanna · Reinante · Turchi. <b>Entorno académico:</b> no procesa dinero ni verifica identidad real. <a href="presentacion.html">Consultar alcance, mockup y distribución de temas.</a></p>
-    <p class="note">Panel de demo oculto: mantené presionado el logo 2 s, tocá 5 veces la versión en Perfil o agregá <span class="mono">?dev=1</span> a la URL. <span class="mono">?reset=1</span> vuelve a cargar los datos de ejemplo.</p>
-  </div>
-
-  <section class="demo" aria-label="Vista demo">
-    <div class="demo-bar">
-      <span class="logo"><span class="mark">R</span>Vista demo · datos ficticios</span>
-      <div class="row">
-        <a class="btn sm" href="presentacion.html">Alcance y exposición</a>
-        <a class="btn sm" href="admin.html" target="_blank" rel="noopener">Abrir panel admin</a>
-        <button class="btn sm" id="reloadBtn">Recargar teléfonos</button>
-        <button class="btn sm" id="closeBtn">Salir de la vista demo</button>
-      </div>
-    </div>
+<body class="demo-on">
+  <section class="demo" aria-label="Aplicaciones Royal Solutions">
     <div class="phones" id="phones">
-      <div class="phone"><span class="lbl">Cliente</span><div class="slot"><div class="handset"><div class="glass light"><div class="status"><span class="clock">9:41</span><span class="icons"></span></div><div class="island"></div><iframe title="App cliente" data-src="cliente.html" data-app="cliente"></iframe><div class="homebar"></div></div></div></div></div>
-      <div class="phone"><span class="lbl">Prestador</span><div class="slot"><div class="handset"><div class="glass dark"><div class="status"><span class="clock">9:41</span><span class="icons"></span></div><div class="island"></div><iframe title="App prestador" data-src="prestador.html" data-app="prestador"></iframe><div class="homebar"></div></div></div></div></div>
+      <div class="phone"><a class="lbl" href="cliente.html" aria-label="Abrir app cliente">App cliente ↗</a><div class="slot"><div class="handset"><div class="glass light"><div class="status"><span class="clock">9:41</span><span class="icons"></span></div><div class="island"></div><iframe title="App cliente" data-src="cliente.html" data-app="cliente"></iframe><div class="homebar"></div></div></div></div></div>
+      <div class="phone"><a class="lbl" href="prestador.html" aria-label="Abrir app prestador">App prestador ↗</a><div class="slot"><div class="handset"><div class="glass light"><div class="status"><span class="clock">9:41</span><span class="icons"></span></div><div class="island"></div><iframe title="App prestador" data-src="prestador.html" data-app="prestador"></iframe><div class="homebar"></div></div></div></div></div>
     </div>
   </section>
 
-  <script>
+  <script type="module">
+    import * as S from "./js/store.js";
+    S.load();
+    if (!localStorage.getItem("rs_apps_initialized")) {
+      for (const [app, email] of [["cliente", "lucia@demo.com"], ["prestador", "ramiro@demo.com"]]) {
+        const user = S.getDb().users.find(u => u.email === email);
+        if (!S.getSession(app) && user) S.setSession(app, user.id);
+        localStorage.setItem(`rs_onboarding_done_${app}`, "1");
+      }
+      localStorage.setItem("rs_apps_initialized", "1");
+    }
     const frames = [...document.querySelectorAll('.demo iframe')];
     const W = 416, H = 870; // teléfono con carcasa
     const ICONS = '<svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx=".8"/><rect x="5" y="5.5" width="3" height="6.5" rx=".8"/><rect x="10" y="3" width="3" height="9" rx=".8"/><rect x="15" y="0" width="3" height="12" rx=".8"/></svg>'
@@ -160,15 +93,11 @@
       document.body.classList.add('demo-on');
       frames.forEach((f) => { if (!f.src) f.src = f.dataset.src; });
       fit();
-      history.replaceState(null, '', '#demo');
+
     }
-    function closeDemo() { document.body.classList.remove('demo-on'); history.replaceState(null, '', location.pathname); }
-    document.getElementById('demoBtn').onclick = openDemo;
-    document.getElementById('closeBtn').onclick = closeDemo;
-    document.getElementById('reloadBtn').onclick = () => frames.forEach((f) => { f.src = f.dataset.src; });
     window.addEventListener('resize', fit);
     setInterval(tickClock, 1000); tickClock();
-    if (location.hash === '#demo' || location.pathname.replace(/\/$/, '') === '/demo') openDemo();
+    openDemo();
   </script>
 </body>
 </html>

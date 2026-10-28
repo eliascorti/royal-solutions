@@ -36,7 +36,7 @@ function providerCard(x, extra = '') {
     </div></button>`;
 }
 
-function orderRow(o, { rehire = false } = {}) {
+function orderRow(o) {
   const p = S.provider(o.providerId);
   const u = S.user(p.userId);
   return `<div class="li" style="flex-wrap:wrap">
@@ -45,7 +45,6 @@ function orderRow(o, { rehire = false } = {}) {
       <div class="grow"><div class="row between"><span class="small strong ellipsis">${esc(o.descripcion)}</span>${o.montoFinal || o.precioAcordado ? `<span class="small">${moneyHtml(o.montoFinal || o.precioAcordado)}</span>` : ''}</div>
       <div class="row between"><span class="xs muted">${esc(u.nombre)} ${esc(u.apellido[0])}. · <span class="mono">${o.id}</span> · ${fmtDate(o.creadoEn)}</span>${statusBadge('order', o.estado, L)}</div></div>
     </button>
-    ${rehire ? `<button class="btn sm" data-go="/contratar/${p.id}?rubro=${o.rubroId}" style="margin-left:44px">${icon('repeat', 'sm')}Volver a contratar</button>` : ''}
   </div>`;
 }
 
@@ -70,7 +69,6 @@ const inicio = {
     const loc = origin(ctx);
     const cerca = S.searchProviders({ from: loc, sort: 'distancia' }).slice(0, 5);
     const openReqs = S.requestsOfClient(u.id).filter((r) => ['abierta'].includes(r.estado));
-    const past = [...new Map(S.ordersOfClient(u.id).filter((o) => ['finalizada'].includes(o.estado)).map((o) => [o.providerId, o])).values()].slice(0, 4);
     return `<div class="stack">
       <div><div class="hello">Hola, ${esc(u.nombre)}</div><div class="small muted row gap-1">${icon('pin', 'sm')}${esc(S.barrio(loc.barrio).nombre)} · ${esc(loc.calle)}</div></div>
       ${activeBanner(ctx)}
@@ -78,7 +76,6 @@ const inicio = {
       <button class="search-fake" data-go="/buscar">${icon('search')}<span>Buscar plomero, gasista, flete…</span></button>
       <button class="publish-cta" data-go="/publicar/1">${icon('plus')}<div class="grow"><b>Publicar changa</b><span>Describilo en una línea y recibí precios de prestadores cerca</span></div>${icon('right')}</button>
       <div class="rubros">${RUBROS.map((r) => `<button data-go="/buscar?rubro=${r.id}">${icon(r.icono)}<span>${esc(r.nombre)}</span></button>`).join('')}</div>
-      ${past.length ? `<div class="section-title"><h2>Volver a contratar</h2></div><div class="chips">${past.map((o) => { const pu = S.user(S.provider(o.providerId).userId); return `<button class="chip" data-go="/contratar/${o.providerId}?rubro=${o.rubroId}">${icon('repeat', 'sm')}${esc(pu.nombre)} · ${esc(S.rubro(o.rubroId).nombre)}</button>`; }).join('')}</div>` : ''}
       <div class="section-title"><h2>Cerca tuyo</h2><a class="small" href="#/buscar?vista=mapa">Ver mapa</a></div>
       <div class="card list">${cerca.map((x) => providerCard(x)).join('')}</div>
       <p class="xs faint">Solo mostramos prestadores con identidad verificada. Ordenados por distancia a tu dirección.</p>
@@ -565,7 +562,7 @@ const misChangas = {
     }
     if (!done.length && !other.length) return tabs + empty('clock', 'Sin historial todavía', 'Cuando termines tu primera orden la vas a ver acá.');
     return `${tabs}<div class="stack">
-      ${done.length ? `<div class="upper">Finalizadas</div><div class="card list">${done.map((o) => orderRow(o, { rehire: true })).join('')}</div>` : ''}
+      ${done.length ? `<div class="upper">Finalizadas</div><div class="card list">${done.map((o) => orderRow(o)).join('')}</div>` : ''}
       ${other.length || closedReqs.length ? `<div class="upper">Canceladas, rechazadas o vencidas</div><div class="card list">${other.map((o) => orderRow(o)).join('')}${closedReqs.map((r) => `<button class="li" data-go="/changa/${r.id}"><span class="av sm" style="background:var(--surface-2);color:var(--text)">${rubroIcon(r.rubroId)}</span><div class="grow"><div class="small ellipsis">${esc(r.descripcion)}</div><div class="xs muted mono">${r.id}</div></div>${statusBadge('request', r.estado, L)}</button>`).join('')}</div>` : ''}
     </div>`;
   },
@@ -616,7 +613,6 @@ const orden = {
       ${help ? `<button class="btn block" data-act="help">${icon('lifebuoy')}Ayuda / emergencia</button>` : ''}
       <div class="section-title"><h2>Timeline</h2></div>
       <ul class="timeline">${[...o.timeline].reverse().map((h, i) => `<li class="${i === 0 ? 'now' : ''}"><div>${esc(h.texto)}</div><div class="t">${fmtDate(h.t)} ${fmtTime(h.t)} · ${esc(h.actor)}</div></li>`).join('')}</ul>
-      ${['finalizada'].includes(o.estado) ? `<button class="btn block" data-go="/contratar/${p.id}?rubro=${o.rubroId}">${icon('repeat')}Volver a contratar a ${esc(pu.nombre)}</button>` : ''}
       ${canReport ? `<button class="btn ghost block" data-go="/reportar/${o.id}">${icon('flag')}Reportar un problema</button>` : ''}
       ${canCancel ? '<button class="btn danger block" data-act="cancel">Cancelar orden</button>' : ''}
     </div>`;
@@ -832,10 +828,10 @@ const perfil = {
         <button class="li" data-go="/perfil/datos">${icon('user')}<span class="grow">Mis datos</span>${icon('right', 'sm chev')}</button>
         <button class="li" data-go="/perfil/pagos">${icon('card')}<span class="grow">Medios de pago</span><span class="xs muted">${plural(u.tarjetas.length, 'tarjeta')}</span>${icon('right', 'sm chev')}</button>
         <button class="li" data-go="/perfil/direcciones">${icon('pin')}<span class="grow">Direcciones</span><span class="xs muted">${u.direcciones.length}</span>${icon('right', 'sm chev')}</button>
-        <button class="li" data-go="/favoritos">${icon('heart')}<span class="grow">Favoritos <small class="muted">· alcance completo</small></span><span class="xs muted">${u.favoritos.length}</span>${icon('right', 'sm chev')}</button>
+        <button class="li" data-go="/favoritos">${icon('heart')}<span class="grow">Favoritos</span><span class="xs muted">${u.favoritos.length}</span>${icon('right', 'sm chev')}</button>
         <button class="li" data-go="/perfil/notificaciones">${icon('bell')}<span class="grow">Notificaciones</span>${icon('right', 'sm chev')}</button>
       </div>
-      <button class="card pad row" style="width:100%;text-align:left;cursor:pointer;color:inherit" data-act="offer">${icon('briefcase')}<div class="grow"><div class="strong">${p ? 'Ir a mi perfil de prestador' : 'Quiero ofrecer mis servicios'}</div><div class="xs muted">${p ? `Estado: ${L.provider[p.estado]}` : 'Sumate como prestador. Comisión de 3 a 5%, sin abonos.'}</div></div>${icon('external', 'sm')}</button>
+      <button class="card pad row" style="width:100%;text-align:left;cursor:pointer;color:inherit" data-act="offer">${icon('briefcase')}<div class="grow"><div class="strong">${p ? 'Ir a mi perfil de prestador' : 'Quiero ofrecer mis servicios'}</div><div class="xs muted">${p ? `Estado: ${L.provider[p.estado]}` : 'Sumate como prestador.'}</div></div>${icon('external', 'sm')}</button>
       <div class="card list"><button class="li" disabled data-tip="Próximamente" style="opacity:.55">${icon('help')}<span class="grow">Centro de ayuda</span></button></div>
       ${profileFooter('cliente')}
     </div>`;
@@ -879,7 +875,6 @@ const perfilPagos = {
     return `<div class="stack">
       ${u.tarjetas.length ? `<div class="card list">${u.tarjetas.map((c) => `<div class="li">${icon('card')}<div class="grow"><div class="small strong">${esc(c.marca)} •••• ${c.last4}</div><div class="xs muted mono">Vence ${esc(c.venc)} · ${esc(c.token.slice(0, 12))}…</div></div><button class="btn ghost icon sm" data-act="del" data-id="${c.id}" aria-label="Eliminar">${icon('trash', 'sm')}</button></div>`).join('')}</div>` : empty('card', 'Sin tarjetas guardadas', 'Agregá una para pagar más rápido.')}
       <button class="btn block" data-act="add">${icon('plus')}Agregar tarjeta</button>
-      <div class="banner info">${icon('lock')}<div>Los datos de la tarjeta van directo a la pasarela de pagos. Royal solo guarda un <b>token</b> y los últimos 4 dígitos.</div></div>
       <p class="xs faint">Demo: una tarjeta terminada en 0000 es rechazada por la pasarela.</p>
     </div>`;
   },
@@ -954,7 +949,7 @@ startMobileApp({
     '/chat/:id': '/mensajes', '/notificaciones': '/inicio', '/registro': '/login', '/recuperar': '/login', '/recuperar/:token': '/login',
   },
   tagline: 'Oficios y changas en Santa Fe, con prestadores verificados cerca tuyo.',
-  quickLogins: [{ label: 'Entrar como Lucía — cliente', email: 'lucia@demo.com' }, { label: 'Entrar como Martín — cliente', email: 'martin.aguirre@demo.com' }],
+  quickLogins: [{ label: 'Entrar como Lucía', email: 'lucia@demo.com' }, { label: 'Entrar como Martín', email: 'martin.aguirre@demo.com' }],
   onboarding: [
     { title: 'Publicá lo que necesitás', text: 'Contalo en una línea. Los prestadores cerca tuyo te mandan su precio en minutos.', figure: fig1 },
     { title: 'Elegí con datos, no a ciegas', text: 'Identidad, antecedentes y matrícula verificadas. Las reseñas se vinculan a órdenes finalizadas; los ejemplos son ficticios.', figure: fig2 },
