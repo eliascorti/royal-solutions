@@ -1,29 +1,18 @@
-# Complementos; secciones originales conservadas en el PDF
+# Requerimientos, matriz de trazabilidad y casos de uso
 
-# 15.4. Complementos de la POC
-Se conservan la portada, el lema, el logo, la estructura, RF-01 a RF-30, CU-01 a CU-23 y las matrices originales. Los complementos siguientes cubren funciones presentes en las apps que no tenían un caso explícito. No sustituyen ni renumeran los casos anteriores.
-## 15.4.1. Ajustes de alcance
-El acceso público abre las apps de cliente y prestador. Se retiran la presentación web y el aviso de alcance. Los accesos individuales siguen disponibles.
-La app prestador no incluye billetera. El cálculo de la comisión previsto en RF-19, RF-20 y RF-21 permanece interno; el panel interno registra sus regularizaciones. La reputación no muestra códigos de orden ni el contador de cancelaciones tardías.
-Rubros y descripción se edita sin información de riesgo o porcentaje de comisión y sin pasar por zona y disponibilidad. Los barrios y horarios se actualizan en su propio apartado.
-La agenda muestra únicamente el día elegido y omite franjas no disponibles sin reservas. Las órdenes ya reservadas se conservan si cambian los horarios.
-Se retiran el selector de tema y los atajos Volver a contratar de inicio e historial. Los accesos rápidos muestran Entrar como y el nombre. La consulta del historial se mantiene.
-La POC representa pagos, correo, documentos, notificaciones y ubicación con datos locales. No se afirma integración externa ni un sistema productivo; las funciones futuras del alcance completo conservan su carácter de visión del proyecto.
-## 15.4.2. Requerimientos adicionales
-| Requerim. | Detalle | Módulo |
-| --- | --- | --- |
-| RF-31 | Representar el pago del servicio con Mercado Pago con resultado aprobado o rechazado, reintento y referencia local; registrar la comisión una sola vez al acreditar. | Pagos |
-| RF-32 | Permitir al administrador consultar comisiones pendientes y registrar una regularización de ejemplo por transferencia o Mercado Pago, total o parcial, sin una billetera en la app prestador. | Administración |
-| RF-33 | Permitir a los participantes enviar y leer mensajes vinculados a su orden, mostrando nuevos mensajes y ocultando datos de contacto detectados por reglas locales. | Comunicación |
-| RF-34 | Permitir al prestador informar la finalización y el monto final; el cliente confirma el pago o solicita revisión antes del cierre de la orden. | Ejecución |
-| RF-35 | Permitir revisar diferencias de importe o acreditación y registrar una resolución; corregir un importe no acredita por sí solo el pago. | Administración |
-| RF-36 | Permitir al cliente agregar o quitar prestadores favoritos y consultar su listado. | Servicios |
-| RF-37 | Permitir al cliente guardar direcciones con alias, calle y barrio y seleccionar una para la búsqueda y contratación. | Usuarios |
-| RF-38 | Permitir configurar las preferencias locales de notificaciones de postulaciones, estados y mensajes. | Comunicación |
+## 14.2. Requerimientos
+| Código | Detalle | Tipo | Módulo | MVP |
+| --- | --- | --- | --- | --- |
+| RF-31 | Representar el pago del servicio con Mercado Pago con resultado aprobado o rechazado, reintento y referencia local; registrar la comisión una sola vez al acreditar. | Funcional | Pagos | Sí |
+| RF-32 | Permitir al administrador consultar comisiones pendientes y registrar una regularización de ejemplo por transferencia o Mercado Pago, total o parcial, sin una billetera en la app prestador. | Funcional | Administración | Sí |
+| RF-33 | Permitir a los participantes enviar y leer mensajes vinculados a su orden, mostrando nuevos mensajes y ocultando datos de contacto detectados por reglas locales. | Funcional | Comunicación | Sí |
+| RF-34 | Permitir al prestador informar la finalización y el monto final; el cliente confirma el pago o solicita revisión antes del cierre de la orden. | Funcional | Ejecución | Sí |
+| RF-35 | Permitir revisar diferencias de importe o acreditación y registrar una resolución; corregir un importe no acredita por sí solo el pago. | Funcional | Administración | Sí |
+| RF-36 | Permitir al cliente agregar o quitar prestadores favoritos y consultar su listado. | Funcional | Servicios | Sí |
+| RF-37 | Permitir al cliente guardar direcciones con alias, calle y barrio y seleccionar una para la búsqueda y contratación. | Funcional | Usuarios | Sí |
+| RF-38 | Permitir configurar las preferencias locales de notificaciones de postulaciones, estados y mensajes. | Funcional | Comunicación | Sí |
 
-# 15.4.3. Extensión de la matriz de trazabilidad CU - RF
-Se mantienen intactas las matrices de 15.2. Estos bloques agregan las filas CU-24 a CU-33 y las columnas RF-31 a RF-38. Ningún caso nuevo modifica las relaciones originales. No hay nuevas referencias a RF-01 a RF-15.
-## Bloque B adicional - RF-16 a RF-30
+## Bloque B - RF-16 a RF-30
 | CU | RF-16 | RF-17 | RF-18 | RF-19 | RF-20 | RF-21 | RF-22 | RF-23 | RF-24 | RF-25 | RF-26 | RF-27 | RF-28 | RF-29 | RF-30 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | CU-24 |  |  |  |  |  | X |  |  |  |  |  |  |  |  |  |
@@ -51,7 +40,6 @@ Se mantienen intactas las matrices de 15.2. Estos bloques agregan las filas CU-2
 | CU-32 |  |  |  |  |  |  |  |  |
 | CU-33 |  |  |  |  | X |  |  |  |
 
-# 15.4.4. Casos de uso adicionales
 ### CU-24 - Pagar el servicio mediante Mercado Pago
 
 **Actor principal:** Cliente

@@ -1,4 +1,4 @@
-"""Conserva el PDF entregado y agrega únicamente complementos y un DER completo.
+"""Actualiza las secciones del PDF conservando su diseño y un DER completo.
 Uso: python scripts/generar_documento_poc.py --source "ruta/al/PDF_original.pdf"
 """
 from pathlib import Path
@@ -78,26 +78,19 @@ def table(headers,rows,widths,matrix=False):
  rows=list(rows);data=[[p(h,'MatrixHead' if matrix else 'Head') for h in headers]]+[[p(v,'Matrix' if matrix else 'Cell') for v in row] for row in rows]
  t=Table(data,colWidths=widths,repeatRows=1,hAlign='LEFT');t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),blue),('GRID',(0,0),(-1,-1),.4,colors.HexColor('#B6C0C7')),('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),('LEFTPADDING',(0,0),(-1,-1),4),('RIGHTPADDING',(0,0),(-1,-1),4)]));story.extend([t,Spacer(1,7)])
  md.extend(['| '+' | '.join(headers)+' |','| '+' | '.join('---' for h in headers)+' |']+['| '+' | '.join(str(v) for v in row)+' |' for row in rows]+[''])
-def build(path,items):SimpleDocTemplate(str(path),pagesize=(595.28,841.89),leftMargin=62.35,rightMargin=62.35,topMargin=57,bottomMargin=48,title='Royal Solutions - POC',author='Equipo Royal Solutions').build(items)
-heading('15.4. Complementos de la POC',1)
-add('Se conservan la portada, el lema, el logo, la estructura, RF-01 a RF-30, CU-01 a CU-23 y las matrices originales. Los complementos siguientes cubren funciones presentes en las apps que no tenían un caso explícito. No sustituyen ni renumeran los casos anteriores.')
-heading('15.4.1. Ajustes de alcance')
-for text in [
- 'El acceso público abre las apps de cliente y prestador. Se retiran la presentación web y el aviso de alcance. Los accesos individuales siguen disponibles.',
- 'La app prestador no incluye billetera. El cálculo de la comisión previsto en RF-19, RF-20 y RF-21 permanece interno; el panel interno registra sus regularizaciones. La reputación no muestra códigos de orden ni el contador de cancelaciones tardías.',
- 'Rubros y descripción se edita sin información de riesgo o porcentaje de comisión y sin pasar por zona y disponibilidad. Los barrios y horarios se actualizan en su propio apartado.',
- 'La agenda muestra únicamente el día elegido y omite franjas no disponibles sin reservas. Las órdenes ya reservadas se conservan si cambian los horarios.',
- 'Se retiran el selector de tema y los atajos Volver a contratar de inicio e historial. Los accesos rápidos muestran Entrar como y el nombre. La consulta del historial se mantiene.',
- 'La POC representa pagos, correo, documentos, notificaciones y ubicación con datos locales. No se afirma integración externa ni un sistema productivo; las funciones futuras del alcance completo conservan su carácter de visión del proyecto.',
-]:add(text)
-heading('15.4.2. Requerimientos adicionales')
-table(['Requerim.','Detalle','Módulo'],[(ident('RF',n),t,m) for n,m,t in RF],[53,337.58,80])
-story.append(PageBreak());heading('15.4.3. Extensión de la matriz de trazabilidad CU - RF',1)
-add('Se mantienen intactas las matrices de 15.2. Estos bloques agregan las filas CU-24 a CU-33 y las columnas RF-31 a RF-38. Ningún caso nuevo modifica las relaciones originales. No hay nuevas referencias a RF-01 a RF-15.')
-for title,ns in [('Bloque B adicional - RF-16 a RF-30',list(range(16,31))),('Bloque C - RF-31 a RF-38',list(range(31,39)))]:
+def build(path,items,top=57):SimpleDocTemplate(str(path),pagesize=(595.28,841.89),leftMargin=62.35,rightMargin=62.35,topMargin=top,bottomMargin=48,title='Royal Solutions - POC',author='Equipo Royal Solutions').build(items)
+# Requerimientos en 14.2, matrices en 15.2 y casos en 15.3.
+heading('14.2. Requerimientos')
+table(['Código','Detalle','Tipo','Módulo','MVP'],[(ident('RF',n),t,'Funcional',m,'Sí') for n,m,t in RF],[44,252.58,49,91,34])
+requirements_part=TMP/'requerimientos.pdf';build(requirements_part,story,top=142)
+requirements_md=list(md)
+story=[];md=[]
+for title,ns in [('Bloque B - RF-16 a RF-30',list(range(16,31))),('Bloque C - RF-31 a RF-38',list(range(31,39)))]:
  heading(title)
  table(['CU']+[ident('RF',n) for n in ns],[(ident('CU',c['number']),)+tuple('X' if n in c['rfs'] else '' for n in ns) for c in CU],[42]+[(470.58-42)/len(ns)]*len(ns),matrix=True)
-story.append(PageBreak());heading('15.4.4. Casos de uso adicionales',1)
+matrices_part=TMP/'matrices.pdf';build(matrices_part,story,top=222)
+matrices_md=list(md)
+story=[];md=[]
 for c in CU:
  items=[p(ident('CU',c['number'])+' - '+c['title'],'H2x')]
  rows=[('Actor principal',c['actor']),('RF asociados',refs(c['rfs'])),('Descripción',c['description']),('Precondiciones',c['pre']),('Postcondiciones',c['post']),('Flujo principal','\n'.join(f'{i}. {x}' for i,x in enumerate(c['steps'],1))),('Flujos alternativos','\n'.join(f'{i}. {x}' for i,x in enumerate(c['alternatives'],1)))]
@@ -105,8 +98,8 @@ for c in CU:
  values[0]=[Paragraph('<b>'+escape(rows[0][0])+'</b>',styles['WhiteCell']),p(rows[0][1],'WhiteCell')]
  t=Table(values,colWidths=[234,236.58],hAlign='LEFT');t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),blue),('GRID',(0,0),(-1,-1),.6,colors.black),('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),('LEFTPADDING',(0,0),(-1,-1),4),('RIGHTPADDING',(0,0),(-1,-1),4)]));items.extend([t,Spacer(1,8)]);story.append(KeepTogether(items))
  md.extend(['### '+ident('CU',c['number'])+' - '+c['title'],'']+[f'**{a}:** {b}\n' for a,b in rows])
-annex=TMP/'complementos_poc.pdf';build(annex,story)
-(ROOT/'docs/SECCIONES_14_15_POC.md').write_text('# Complementos; secciones originales conservadas en el PDF\n\n'+'\n'.join(x.rstrip() for x in md).rstrip()+'\n',encoding='utf-8')
+cases_part=TMP/'casos_uso.pdf';build(cases_part,story)
+(ROOT/'docs/SECCIONES_14_15_POC.md').write_text('# Requerimientos, matriz de trazabilidad y casos de uso\n\n'+'\n'.join(x.rstrip() for x in requirements_md+matrices_md+md).rstrip()+'\n',encoding='utf-8')
 
 # Sustituir únicamente la sección 16 antigua: una lámina completa y reglas concisas.
 story=[];heading('16.1. Lectura del modelo y reglas de integridad',1)
@@ -119,7 +112,7 @@ for t in [
  'La dirección de una solicitud u orden es una copia histórica: no cambia si luego se edita una dirección del usuario. Las reservas confirmadas se mantienen al editar la disponibilidad.',
 ]:add(t)
 heading('16.2. Correspondencia con el POC y límites del modelo')
-add('El DER reúne en una sola vista los datos de los casos de uso originales y adicionales. Las entidades de usuario, prestador y documentos respaldan el alta; solicitud, postulación y orden respaldan la contratación; pago y movimiento respaldan cobros y comisiones; reseña y reporte respaldan reputación y moderación. Las restantes entidades completan acceso, comunicación y datos del perfil.')
+add('El DER reúne en una sola vista los datos de los casos de uso del sistema. Las entidades de usuario, prestador y documentos respaldan el alta; solicitud, postulación y orden respaldan la contratación; pago y movimiento respaldan cobros y comisiones; reseña y reporte respaldan reputación y moderación. Las restantes entidades completan acceso, comunicación y datos del perfil.')
 add('PK identifica la clave primaria, FK la clave foránea y UK una restricción única. Las cardinalidades están indicadas en los extremos. Este es el modelo lógico de la POC; la implementación actual utiliza objetos JSON en localStorage, sin una base SQL desplegada. El diseño no introduce nuevas pantallas ni funciones fuera del alcance.')
 rules=TMP/'reglas_der.pdf';build(rules,story)
 der=TMP/'der-completo.pdf';assert len(PdfReader(der).pages)==1
@@ -128,27 +121,61 @@ writer=PdfWriter();writer.append(PdfReader(der));writer.add_metadata({'/Title':'
 der_out=OUT/'RoyalSolutions_DER_Actualizado.pdf'
 with der_out.open('wb') as f:writer.write(f)
 
-writer=PdfWriter()
-for i in range(33):writer.add_page(patched_reader.pages[i] if i+1 in patched_pages else source.pages[i])
-writer.append(PdfReader(annex));writer.append(PdfReader(der));writer.append(PdfReader(rules))
-for i in range(33,len(writer.pages)):
- page=writer.pages[i];w,h=float(page.mediabox.width),float(page.mediabox.height);buf=BytesIO();c=canvas.Canvas(buf,pagesize=(w,h));c.setFont('Body',8);c.drawRightString(w-42,22,str(i+1));c.save();buf.seek(0);page.merge_page(PdfReader(buf).pages[0])
-writer.add_metadata({'/Title':'Royal Solutions - POC conservado con ajustes','/Author':'Equipo Royal Solutions','/Subject':'Original conservado, ajustes puntuales, complementos y un único DER'})
+# Recortes conservan el diseño original y permiten insertar el contenido en su sección.
+def region(page_index,top,bottom,output):
+ doc=pymupdf.open(SOURCE)
+ # Copiar primero la página, luego retirar solo el contenido fuera de la región.
+ single=pymupdf.open();single.insert_pdf(doc,from_page=page_index,to_page=page_index)
+ pg=single[0];w,h=pg.rect.width,pg.rect.height
+ if top>0:pg.add_redact_annot(pymupdf.Rect(0,0,w,top),fill=(1,1,1))
+ if bottom<h:pg.add_redact_annot(pymupdf.Rect(0,bottom,w,h),fill=(1,1,1))
+ pg.apply_redactions(images=0,graphics=2)
+ dest=pymupdf.open();new=dest.new_page(width=w,height=h)
+ target_top=top if top==0 else 57
+ clip=pymupdf.Rect(0,top,w,bottom)
+ new.show_pdf_page(pymupdf.Rect(0,target_top,w,target_top+bottom-top),single,0,clip=clip)
+ dest.save(output);doc.close();single.close();dest.close()
+region(19,0,130,TMP/'rf30.pdf')
+region(19,375,800,TMP/'actores.pdf')
+region(21,0,190,TMP/'matriz_original.pdf')
+region(21,385,790,TMP/'cu01.pdf')
+writer=PdfWriter();page_map={}
+def add_original(i):
+ page_map[i+1]=len(writer.pages)
+ writer.add_page(patched_reader.pages[i] if i+1 in patched_pages else source.pages[i])
+for i in range(19):add_original(i)
+req_reader=PdfReader(requirements_part);first=req_reader.pages[0]
+base=PdfReader(TMP/'rf30.pdf').pages[0];base.merge_page(first);writer.add_page(base)
+for pg in req_reader.pages[1:]:writer.add_page(pg)
+writer.append(PdfReader(TMP/'actores.pdf'))
+add_original(20)
+matrix_reader=PdfReader(matrices_part);base=PdfReader(TMP/'matriz_original.pdf').pages[0]
+base.merge_page(matrix_reader.pages[0]);writer.add_page(base)
+for pg in matrix_reader.pages[1:]:writer.add_page(pg)
+writer.append(PdfReader(TMP/'cu01.pdf'))
+for i in range(22,33):add_original(i)
+writer.append(PdfReader(cases_part));writer.append(PdfReader(der));writer.append(PdfReader(rules))
+writer.add_metadata({'/Title':'Royal Solutions - POC','/Author':'Equipo Royal Solutions','/Subject':'Plataforma de servicios de oficios y changas'})
 poc_out=OUT/'RoyalSolutions_POC_Actualizado.pdf'
 with poc_out.open('wb') as f:writer.write(f)
 final=PdfReader(poc_out);preserved=[]
-for i in range(33):
- if i+1 in patched_pages:continue
- a,b=source.pages[i],final.pages[i]
- assert a.extract_text()==b.extract_text(),i+1
- assert a.get_contents().get_data()==b.get_contents().get_data(),i+1
- assert sorted(hashlib.sha256(im.data).hexdigest() for im in a.images)==sorted(hashlib.sha256(im.data).hexdigest() for im in b.images),i+1
- preserved.append(i+1)
-assert {1,21,22}<=set(preserved)
+for original_no,dest in page_map.items():
+ if original_no in patched_pages:continue
+ a,b=source.pages[original_no-1],final.pages[dest]
+ assert a.extract_text()==b.extract_text(),original_no
+ assert a.get_contents().get_data()==b.get_contents().get_data(),original_no
+ assert sorted(hashlib.sha256(im.data).hexdigest() for im in a.images)==sorted(hashlib.sha256(im.data).hexdigest() for im in b.images),original_no
+ preserved.append(original_no)
+assert {1,21}<=set(preserved)
 text='\n'.join(pg.extract_text() or '' for pg in final.pages)
 assert all(ident('RF',n) in text for n in range(1,39))
 assert all(ident('CU',n) in text for n in range(1,34))
 assert all(name in text for name in M['ENTITIES'])
-report=dict(output=str(poc_out),der=str(der_out),pages=len(final.pages),der_pages=1,original_pages_unchanged=preserved,original_cover_and_logo_preserved=True,original_traceability_matrices_preserved=True,patches=patches,additional_requirements=8,additional_cases=10,entities=len(M['ENTITIES']),relations=len(M['RELATIONS']))
+for banned in ['Complementos de la POC','Requerimientos adicionales','Casos de uso adicionales','Se conservan la portada','Estos bloques agregan','secciones originales conservadas']:
+ assert banned not in text,banned
+assert text.index('RF-31')<text.index('15. Casos'), 'RF fuera de sección 14'
+# La primera descripción CU-24 debe aparecer después de CU-23 y antes del DER.
+assert text.index('CU-24 - Pagar')>text.index('CU-23')
+report=dict(output=str(poc_out),der=str(der_out),pages=len(final.pages),der_pages=1,original_pages_unchanged=preserved,original_cover_and_logo_preserved=True,matrices_originales_conservadas=True,requirements_in_section_14=True,traceability_in_section_15_2=True,use_cases_in_section_15_3=True,patches=patches,requirements=38,cases=33,entities=len(M['ENTITIES']),relations=len(M['RELATIONS']))
 (TMP/'validacion_documento.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
 print(json.dumps({k:v for k,v in report.items() if k not in ['patches','original_pages_unchanged']},ensure_ascii=False))

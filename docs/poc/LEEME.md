@@ -1,12 +1,12 @@
-# Documento conservado y DER completo
+# Documento POC y DER
 
-Se utiliza como fuente el PDF de 35 páginas entregado por el equipo. No se reconstruyen su portada, logo, lema ni matrices de trazabilidad.
+El POC mantiene la portada, el logo, el lema y el diseño del PDF entregado. Los 38 requerimientos se encuentran en la sección 14.2, las matrices con X en 15.2 y los 33 casos de uso en 15.3. No contiene un apartado de complementos ni un historial de cambios.
 
-- POC: `output/pdf/RoyalSolutions_POC_Actualizado.pdf` (42 páginas).
-- DER separado: `output/pdf/RoyalSolutions_DER_Actualizado.pdf` (una sola lámina A1 vectorial).
-- Fuente de los complementos: `especificacion.py` (solo RF-31..38 y CU-24..33).
-- Modelo: `modelo.py` (25 entidades y 40 relaciones; una sola vista completa).
-- Fuentes gráficas: `der/completo.dot` y `DER.mmd`.
+- `output/pdf/RoyalSolutions_POC_Actualizado.pdf`: 42 páginas.
+- `output/pdf/RoyalSolutions_DER_Actualizado.pdf`: una lámina A1 vectorial.
+- `especificacion.py`: contenido de RF-31..38 y CU-24..33.
+- `modelo.py`: 25 entidades y 40 relaciones.
+- `der/completo.dot` y `DER.mmd`: modelo gráfico.
 
 ## Regenerar
 
@@ -21,8 +21,6 @@ node scripts/render_der.cjs
 python scripts/generar_documento_poc.py --source "C:/ruta/al/PDF_original.pdf"
 ```
 
-Python también requiere reportlab y pypdf. El script copia las páginas 1-33 del original y corrige puntualmente cuatro páginas: almacenamiento local de documentos, medio Mercado Pago, avisos locales y agenda diaria. Las demás 29 páginas se comprueban por texto, streams gráficos e imágenes idénticos. Esto incluye portada, logo y matrices originales de las páginas 21 y 22.
+Python requiere también reportlab y pypdf. El generador conserva las páginas sin cambios, inserta el contenido dentro de cada sección y aplica correcciones puntuales sobre el texto existente. La portada y las matrices originales mantienen su diseño. El original no se sobrescribe.
 
-Los requerimientos y casos adicionales se agregan como complementos; mantienen la numeración previa y usan extensiones con X de la matriz. La sección 16 antigua se sustituye por un solo DER completo y una página de reglas. La fuente no se sobrescribe.
-
-El informe de validación se guarda en `tmp/pdfs/validacion_documento.json`. Los PDF, dependencias temporales y capturas están ignorados en Git; se versionan las fuentes. La lámina grande permite ampliar el diagrama conservando nitidez.
+El informe `tmp/pdfs/validacion_documento.json` comprueba preservación, referencias, ubicación de las secciones y ausencia de títulos editoriales de complementos. Los PDF y capturas se mantienen como entregables locales; se versionan sus fuentes.

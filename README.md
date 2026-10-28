@@ -32,7 +32,7 @@ El estado se conserva en `localStorage` y se comparte entre apps del mismo naveg
 - [Fuente del DER](docs/poc/modelo.py), [Mermaid](docs/poc/DER.mmd) y el DER completo Graphviz en `docs/poc/der/completo.dot`.
 - [Regeneración de documentos](docs/poc/LEEME.md).
 
-Se conservan el documento original y sus matrices; los agregados completan 38 requerimientos y 33 casos de uso. El DER es una sola lámina de 25 entidades y 40 relaciones. El documento y ambas apps usan el escudo con la corona confirmado por el equipo. Es un modelo lógico propuesto; la app aún usa objetos JSON. Los PDF generados y resultados de pruebas están ignorados en Git y se entregan como archivos locales.
+El POC integra 38 requerimientos y 33 casos de uso en sus secciones y conserva el diseño de las matrices originales. El DER es una sola lámina de 25 entidades y 40 relaciones. El documento y ambas apps usan el escudo con la corona confirmado por el equipo. Es un modelo lógico propuesto; la app aún usa objetos JSON. Los PDF generados y resultados de pruebas están ignorados en Git y se entregan como archivos locales.
 
 ## Verificación
 

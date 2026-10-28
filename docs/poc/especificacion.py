@@ -1,6 +1,4 @@
-"""Agregados al PDF entregado; las secciones y matrices originales se conservan.
-No se reescriben RF-01..30 ni CU-01..23.
-"""
+"""Contenido de requerimientos y casos integrado en las secciones 14.2 y 15.3."""
 
 EXTRA_REQUIREMENTS = [(31,
   'Pagos',

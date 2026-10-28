@@ -21,15 +21,15 @@ Revisión: 27/10/2026. Fuente: `RoyalSolutions_POC FINAL — DER, lema y logo FI
 | Medios de pago | Cartel explicativo sobre envío de datos de tarjeta | Se elimina el cartel. Continúa la gestión local de referencias ficticias. |
 | Ofrecer servicios | Publicidad de comisión y abonos | Se elimina esa frase del perfil cliente. |
 | Historial e inicio | Atajos Volver a contratar | Se retiran de inicio, historial y detalle finalizado. El historial sigue siendo consultable. |
-| Alcance | Marcas MVP contradictorias entre tablas; funciones de visión futura mezcladas con la entrega | Se conservan el alcance completo y los requerimientos originales. Un complemento aclara las eliminaciones de las apps y el carácter local de la POC; no se reescriben las tablas originales. |
+| Alcance | Marcas MVP contradictorias entre tablas; funciones de visión futura mezcladas con la entrega | Se conservan el alcance completo y los requerimientos originales. Los requerimientos y casos se integran en sus secciones, sin comentarios editoriales sobre los cambios. |
 | Casos de uso | El PDF contiene 23 CU; faltan mensajes, favoritos, direcciones, preferencias y edición de disponibilidad del repo | Se especifican esos recorridos y los de finalización, Mercado Pago, revisión y gestión interna de comisiones, hasta 33 CU. |
 | DER | El modelo de agosto depende de postulación y omite varias estructuras usadas por la app | Nuevo modelo de 25 entidades y 40 relaciones, en una sola lámina completa, con claves, cardinalidades y reglas. |
 
 ## Documento actualizado
 
-Se parte del PDF entregado, conservando sus páginas 1-33. Se verifican 29 páginas sin cambios de texto, streams gráficos e imágenes; incluyen la portada con el escudo y las matrices originales de las páginas 21 y 22. Solo se corrigen frases puntuales en las páginas 25, 28, 30 y 32 para reflejar almacenamiento local, Mercado Pago, avisos de la aplicación y agenda diaria.
+El PDF conserva portada, logo, lema y diseño de sus tablas. Los requerimientos RF-31..38 se ubican en 14.2 antes del capítulo de casos de uso; las filas y columnas de las matrices se ubican en 15.2; CU-24..33 siguen a CU-23 dentro de 15.3. No se incluye un apartado de complementos ni explicaciones sobre qué se agregó.
 
-RF-01..30 y CU-01..23 mantienen su numeración y estructura. Los agregados se incorporan como complementos, con matrices adicionales que conservan las X. No se sustituyen las matrices por una lista. Se reemplaza únicamente la sección 16 por un DER completo y sus reglas; el PDF separado del DER tiene una sola página.
+Las páginas originales 20 y 22 se distribuyen para permitir esa integración sin rediseñar sus tablas. El resto del contenido se copia del original, con las correcciones puntuales de funcionamiento ya identificadas. La sección 16 contiene un único DER completo y sus reglas.
 
 ## Ajustes que evitan promesas incorrectas
 
