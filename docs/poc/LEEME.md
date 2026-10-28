@@ -1,42 +1,28 @@
-# Documento funcional corregido - 26/10/2026
+# Documento conservado y DER completo
 
-Esta revisión responde al pedido de mantener la introducción, investigación, encuestas y gráficos, y corregir exclusivamente alcance, MVP/POC, requerimientos, recorridos de cliente/prestador y trazabilidad.
+Se utiliza como fuente el PDF de 35 páginas entregado por el equipo. No se reconstruyen su portada, logo, lema ni matrices de trazabilidad.
 
-## Entrega
-
-- Documento completo: `output/pdf/RoyalSolutions_Final_Corregido_POC.pdf` (41 páginas).
-- Texto editable de las secciones sustituidas: `docs/SECCIONES_14_15_POC.md`.
-- Fuente estructurada: `docs/poc/especificacion.py`.
-- Generador y validación: `scripts/generar_documento_poc.py`.
-
-Las primeras 15 páginas se toman directamente del PDF original, conservando sus textos, imágenes y streams gráficos. Desde la página 16 se reemplazan las secciones 14 y 15. El original de `../material-fuente/` no se sobrescribe.
-
-## Decisiones incorporadas
-
-- Efectivo, transferencia y Mercado Pago incluidos en el recorte funcional de la POC, con ejecución externa simulada.
-- Pago del servicio y pago de la deuda de comisión como operaciones diferentes.
-- Regularización por transferencia o Mercado Pago; sin recepción física de efectivo por Royal.
-- Billetera definida como resumen de cobros y comisiones, sin retiros ni dinero electrónico disponible.
-- Disponibilidad semanal y agenda Día/Semana vinculadas a los CU existentes de alta y consulta de órdenes.
-- Estados de orden separados de estados de pago, revisión, alta y calificación.
-- RF-01 a RF-30 conservados y aclarados; RF-31 a RF-35 añadidos.
-- CU-01 a CU-23 conservados y revisados; CU-24 a CU-28 añadidos.
-- Matriz en tres bloques e inversa RF a CU, ambas generadas de las mismas referencias.
-
-## Validación realizada
-
-El generador comprueba numeración continua de 35 RF y 28 CU, cobertura completa entre alcance/RF/CU, referencias existentes y campos completos de cada caso. Tras generar, reabre el PDF y compara las primeras 15 páginas con el original: texto, hash del contenido gráfico y hashes de las imágenes. El informe se escribe en `tmp/pdfs/validacion_documento.json`.
-
-Además se renderizaron e inspeccionaron las 26 páginas nuevas y se comprobó que no existiera texto fuera de sus márgenes.
-
-## Relación con el software
-
-El pedido de este turno modifica el documento, no la aplicación. Esta especificación define la referencia revisada: no afirma que todos los nuevos flujos estén ya implementados. En particular, habrá que contrastar la regularización pendiente de acreditar, los resultados MP pendientes, las validaciones de disponibilidad y los medios visibles del cliente antes de presentar la web como cumplimiento de esta revisión.
-
-La página de presentación y la guía de defensa anteriores pertenecen a la revisión previa; sus afirmaciones de Mercado Pago fuera del MVP quedan superadas por este documento. No deben usarse como la matriz vigente de esta revisión.
+- POC: `output/pdf/RoyalSolutions_POC_Actualizado.pdf` (42 páginas).
+- DER separado: `output/pdf/RoyalSolutions_DER_Actualizado.pdf` (una sola lámina A1 vectorial).
+- Fuente de los complementos: `especificacion.py` (solo RF-31..38 y CU-24..33).
+- Modelo: `modelo.py` (25 entidades y 40 relaciones; una sola vista completa).
+- Fuentes gráficas: `der/completo.dot` y `DER.mmd`.
 
 ## Regenerar
 
-Desde la raíz del repositorio, ejecutar el generador con Python y las bibliotecas `reportlab` y `pypdf`. Utiliza las fuentes Times de Windows y el PDF original ubicado junto al repositorio en `material-fuente/`.
+Desde la raíz, con Python, Node y Edge:
 
-Los PDF y los archivos de revisión visual quedan fuera de Git; el contenido editable y el generador permiten reconstruir la entrega.
+```powershell
+npm install
+npm install --prefix tmp/der-tools @viz-js/viz@3.31.0 --no-audit --no-fund
+python -m pip install --target tmp/pdf-tools pymupdf
+python scripts/preparar_der.py
+node scripts/render_der.cjs
+python scripts/generar_documento_poc.py --source "C:/ruta/al/PDF_original.pdf"
+```
+
+Python también requiere reportlab y pypdf. El script copia las páginas 1-33 del original y corrige puntualmente cuatro páginas: almacenamiento local de documentos, medio Mercado Pago, avisos locales y agenda diaria. Las demás 29 páginas se comprueban por texto, streams gráficos e imágenes idénticos. Esto incluye portada, logo y matrices originales de las páginas 21 y 22.
+
+Los requerimientos y casos adicionales se agregan como complementos; mantienen la numeración previa y usan extensiones con X de la matriz. La sección 16 antigua se sustituye por un solo DER completo y una página de reglas. La fuente no se sobrescribe.
+
+El informe de validación se guarda en `tmp/pdfs/validacion_documento.json`. Los PDF, dependencias temporales y capturas están ignorados en Git; se versionan las fuentes. La lámina grande permite ampliar el diagrama conservando nitidez.

@@ -1,208 +1,154 @@
-"""Reemplaza solo las secciones 14/15 y conserva las primeras 15 páginas del PDF.
-
-Ejecutar con Python con reportlab y pypdf instalados.
-Contenido editable: docs/poc/especificacion.py. También emite una versión Markdown.
+"""Conserva el PDF entregado y agrega únicamente complementos y un DER completo.
+Uso: python scripts/generar_documento_poc.py --source "ruta/al/PDF_original.pdf"
 """
 from pathlib import Path
-import hashlib
-import json
-import runpy
+from io import BytesIO
 from xml.sax.saxutils import escape
-
-from pypdf import PdfReader, PdfWriter
+import argparse, hashlib, json, runpy, sys
+ROOT=Path(__file__).resolve().parents[1]
+# Dependencia opcional local para las correcciones puntuales sobre el PDF.
+if (ROOT/'tmp/pdf-tools').exists():sys.path.insert(0,str(ROOT/'tmp/pdf-tools'))
+import pymupdf
+from pypdf import PdfReader,PdfWriter
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import getSampleStyleSheet,ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether
+from reportlab.platypus import SimpleDocTemplate,Paragraph,Table,TableStyle,Spacer,PageBreak,KeepTogether
+from reportlab.pdfgen import canvas
+parser=argparse.ArgumentParser();parser.add_argument('--source',type=Path,required=True);args=parser.parse_args()
+SOURCE=args.source.resolve();OUT=ROOT/'output/pdf';TMP=ROOT/'tmp/pdfs'
+OUT.mkdir(parents=True,exist_ok=True);TMP.mkdir(parents=True,exist_ok=True)
+D=runpy.run_path(str(ROOT/'docs/poc/especificacion.py'));M=runpy.run_path(str(ROOT/'docs/poc/modelo.py'))
+RF=D['EXTRA_REQUIREMENTS'];CU=D['EXTRA_CASES']
+assert [r[0] for r in RF]==list(range(31,39))
+assert [c['number'] for c in CU]==list(range(24,34))
+assert {n for c in CU for n in c['rfs'] if n>30}==set(range(31,39))
+assert all(set(c['rfs'])<=set(range(1,39)) for c in CU)
+def ident(p,n):return f'{p}-{n:02d}'
+def refs(ns):return ', '.join(ident('RF',n) for n in ns)
 
-ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT.parent / 'material-fuente' / 'RoyalSolutions_Final.pdf'
-OUT = ROOT / 'output' / 'pdf' / 'RoyalSolutions_Final_Corregido_POC.pdf'
-TMP = ROOT / 'tmp' / 'pdfs'
-D = runpy.run_path(str(ROOT / 'docs' / 'poc' / 'especificacion.py'))
-RF, CU, SCOPE = D['REQUIREMENTS'], D['CASES'], D['SCOPE']
+# Se conservan las páginas originales, sin reconstruir portada, tablas ni matrices.
+source=PdfReader(SOURCE);assert len(source.pages)==35
+edited=pymupdf.open(SOURCE);patches=[]
+fontfile='C:/Windows/Fonts/times.ttf'
+def replace_line(page_index,needle,new):
+ page=edited[page_index];lines=[ln for b in page.get_text('dict')['blocks'] if 'lines' in b for ln in b['lines']]
+ matches=[ln for ln in lines if needle in ''.join(s['text'] for s in ln['spans'])];assert len(matches)==1,(needle,len(matches))
+ ln=matches[0];sp=ln['spans'][0];rect=pymupdf.Rect(ln['bbox']);x,y=sp['origin'];fs=sp['size']
+ assert pymupdf.Font(fontfile=fontfile).text_length(new,fontsize=fs)<530-x
+ page.add_redact_annot(rect,fill=(1,1,1));page.apply_redactions(images=0,graphics=0)
+ page.insert_font(fontname='TNR',fontfile=fontfile);page.insert_text((x,y),new,fontname='TNR',fontsize=fs)
+ patches.append(dict(page=page_index+1,old=needle,new=new))
+def replace_cell(page_index,needle,new):
+ page=edited[page_index];blocks=[b for b in page.get_text('dict')['blocks'] if 'lines' in b]
+ matches=[b for b in blocks if needle in ' '.join(s['text'] for ln in b['lines'] for s in ln['spans'])];assert len(matches)==1,(needle,len(matches))
+ b=matches[0];right=[ln for ln in b['lines'] if ln['bbox'][0]>290];assert right
+ rect=pymupdf.Rect(300.7,min(ln['bbox'][1] for ln in right)-.1,530,max(ln['bbox'][3] for ln in right)+3)
+ fs=right[0]['spans'][0]['size'];page.add_redact_annot(rect,fill=(1,1,1));page.apply_redactions(images=0,graphics=0)
+ page.insert_font(fontname='TNR',fontfile=fontfile)
+ remain=page.insert_textbox(rect,new,fontname='TNR',fontsize=fs,lineheight=1.08)
+ assert remain>=0,(needle,remain)
+ patches.append(dict(page=page_index+1,old=needle,new=new))
+# Cambios concretos sin tocar el diseño ni la numeración de las tablas originales.
+# Sustituir solo la palabra que afirmaba un cifrado inexistente.
+p=edited[24];rects=p.search_for('cifrada.');assert len(rects)==1
+rect=rects[0];lines=[ln for b in p.get_text('dict')['blocks'] if 'lines' in b for ln in b['lines'] if any('cifrada.' in s['text'] for s in ln['spans'])];assert len(lines)==1
+ln=lines[0];text=''.join(s['text'] for s in ln['spans']).replace('cifrada.','local.')
+replace_line(24,'cifrada.',text)
+replace_line(27,'(efectivo, transferencia o tarjeta).','(efectivo, transferencia o Mercado Pago).')
+replace_cell(29,'El usuario otorgó permisos de notificación','El usuario tiene una sesión iniciada en la aplicación.')
+replace_cell(29,'Se produce un evento relevante', '1. Se produce un evento relevante (solicitud, postulación, confirmación, cancelación o pago).\n2. Se determinan los destinatarios por rubro, zona y participación en la orden.\n3. Se registra el aviso en la aplicación.\n4. El usuario abre la notificación y accede a la pantalla correspondiente.')
+replace_cell(29,'El envío falla o el usuario no tiene permisos activos','3.a. Si el usuario desactiva los avisos, la notificación queda en el centro de notificaciones de la aplicación.')
+replace_cell(31,'El usuario accede a la sección "Mis órdenes"','1. El usuario abre Mis changas o Historial.\n2. Se recuperan sus órdenes por estado y fecha.\n3. El prestador puede consultar la agenda diaria.\n4. Selecciona una orden para ver su detalle.')
+patched=TMP/'original_ajustes_puntuales.pdf';edited.save(patched);edited.close();patched_reader=PdfReader(patched)
+patched_pages={x['page'] for x in patches}
 
-def ident(prefix,n): return f'{prefix}-{n:02d}'
-def refs(numbers): return ', '.join(ident('RF',n) for n in numbers)
-
-def validate_spec():
-    expected=set(range(1,36))
-    assert {r[0] for r in RF} == expected and len(RF)==35
-    assert {c['number'] for c in CU} == set(range(1,29)) and len(CU)==28
-    assert {n for c in CU for n in c['rfs']} == expected, 'Requerimientos sin CU o referencias inexistentes'
-    assert {n for _,_,yes,ns in SCOPE if yes for n in ns} == expected, 'Alcance y RF no coinciden'
-    for c in CU:
-        assert all(c[k] for k in ['title','actor','description','pre','post','steps','alternatives'])
-        assert set(c['rfs']) <= expected
-    return {ident('RF',n):[ident('CU',c['number']) for c in CU if n in c['rfs']] for n in range(1,36)}
-
-inverse=validate_spec()
-styles=getSampleStyleSheet()
-for font,file in [('Body','times.ttf'),('Bold','timesbd.ttf'),('Italic','timesi.ttf')]:
-    pdfmetrics.registerFont(TTFont(font,str(Path('C:/Windows/Fonts')/file)))
-pdfmetrics.registerFontFamily('Body',normal='Body',bold='Bold',italic='Italic',boldItalic='Bold')
-blue=colors.HexColor('#155A87')
-styles.add(ParagraphStyle(name='Main',fontName='Body',fontSize=10.5,leading=13.8,spaceAfter=6,alignment=TA_LEFT))
-styles.add(ParagraphStyle(name='H1x',fontName='Bold',fontSize=16,leading=20,textColor=blue,spaceAfter=12,keepWithNext=True))
-styles.add(ParagraphStyle(name='H2x',fontName='Bold',fontSize=12.6,leading=16,textColor=blue,spaceBefore=10,spaceAfter=7,keepWithNext=True))
-styles.add(ParagraphStyle(name='H3x',fontName='Bold',fontSize=11.4,leading=14.5,spaceBefore=8,spaceAfter=6,keepWithNext=True))
-styles.add(ParagraphStyle(name='Cell',fontName='Body',fontSize=9,leading=11.4,spaceAfter=0))
-styles.add(ParagraphStyle(name='HeadCell',parent=styles['Cell'],fontName='Bold',textColor=colors.white))
-styles.add(ParagraphStyle(name='Tiny',fontName='Body',fontSize=8.2,leading=10.3,spaceAfter=4))
-styles.add(ParagraphStyle(name='Bulletx',parent=styles['Main'],leftIndent=12,firstLineIndent=-9,spaceAfter=3))
-W=508
-story=[]
-md=[]
-def p(text,style='Main'): return Paragraph(escape(str(text)),styles[style])
-def add(text): story.append(p(text));md.append(text+'\n')
-def heading(text,level=2): story.append(p(text,{1:'H1x',2:'H2x',3:'H3x'}[level]));md.append('#'*level+' '+text+'\n')
-def bullet(text): story.append(p('- '+text,'Bulletx'));md.append('- '+text)
-def table(headers,rows,widths,small=False):
-    data=[[p(x,'HeadCell') for x in headers]]+[[p(x,'Cell' if not small else 'Tiny') for x in row] for row in rows]
-    t=Table(data,colWidths=widths,repeatRows=1,hAlign='LEFT')
-    t.setStyle(TableStyle([
-        ('BACKGROUND',(0,0),(-1,0),blue),('VALIGN',(0,0),(-1,-1),'TOP'),
-        ('GRID',(0,0),(-1,-1),.4,colors.HexColor('#B6C0C7')),
-        ('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white,colors.HexColor('#F3F6F8')]),
-        ('LEFTPADDING',(0,0),(-1,-1),6),('RIGHTPADDING',(0,0),(-1,-1),6),
-        ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5),
-    ]))
-    story.extend([t,Spacer(1,8)])
-    md.append('| '+' | '.join(headers)+' |')
-    md.append('| '+' | '.join('---' for _ in headers)+' |')
-    md.extend('| '+' | '.join(str(x).replace('|','/') for x in row)+' |' for row in rows)
-    md.append('')
-
-heading('14. Alcance completo del proyecto y recorte de la POC',1)
-add('Revisión funcional del '+D['REVISION']+'. Las secciones anteriores de contexto, introducción, investigación, encuestas y sus gráficos se conservan sin modificaciones. Esta revisión actualiza exclusivamente alcance, requerimientos, reglas de los recorridos, actores, casos de uso y trazabilidad.')
-heading('14.1. Qué se presenta: POC, MVP y proyecto completo')
-add('La entrega académica es una prueba de concepto (POC): representa la factibilidad y coherencia del recorrido entre cliente, prestador y administración. Su recorte funcional corresponde a un MVP avanzado de demostración. No se presenta como una plataforma lista para operar ni como evidencia nueva de validación de mercado.')
-add('MVP designa las capacidades seleccionadas para el recorrido central. POC indica el nivel de ejecución de esta entrega: datos, documentos, pagos y servicios externos de ejemplo. Alcance completo reúne ese recorte y las capacidades futuras previstas. En esta revisión, las filas marcadas POC y todos los RF-01 a RF-35 pertenecen al mismo recorte funcional, sin marcas contradictorias entre tablas.')
-add('El recorrido central comprende: cuenta y perfil; alta del prestador con cobertura y disponibilidad; publicación o consulta de candidatos; postulación y contratación; confirmación o rechazo; ejecución e importe; pago por efectivo, transferencia o Mercado Pago; comisión, reputación e historial. También se representa la regularización de la comisión pendiente que genera el efectivo.')
-add('Las integraciones reales de Mercado Pago, banco, correo, push, identidad, cifrado y GPS no se presumen implementadas. Se representan sus entradas, resultados y efectos locales. La operación real requerirá desarrollo, verificación y definiciones técnicas adicionales. La matriz especifica requisitos; no certifica por sí sola que una versión del software ya los cumple.')
-
-heading('14.1.1. Funcionalidades seleccionadas y evolución futura')
-add('POC = incluido como interacción o simulación de esta entrega. Futuro = parte de la visión del proyecto, excluido del recorrido obligatorio de demostración. Un mapa esquemático o una agenda son representaciones de una función ya vinculada a sus RF, no nuevas integraciones externas.')
-table(['Módulo','Funcionalidad','Recorte','RF'],[(a,b,'POC' if y else 'Futuro',refs(ns) if ns else '-') for a,b,y,ns in SCOPE],[76,289,43,100])
-
-heading('14.1.2. Recorridos coherentes por actor')
-table(['Actor','Recorrido','Casos de uso'],D['FLOW_MAP'],[78,292,138])
-add('El cliente registra el pago del servicio y el prestador registra la regularización de una deuda de comisión. Son operaciones diferentes, con pagadores y destinatarios diferentes. Ambas deben conservar su referencia y sus efectos independientes.')
-
-heading('14.1.3. Disponibilidad, pagos y reglas compartidas')
-for title,items in D['RULES']:
-    heading(title,3)
-    for item in items: bullet(item)
-
-state_start=len(story)
-heading('14.1.4. Estados y condiciones de cierre')
-table(['Estado de la orden','Significado','Origen'],D['ORDER_STATES'],[100,298,110])
-add('Informar finalización no agrega un estado de orden: se registran ejecución y monto y se mantiene Confirmada hasta el pago, o se deriva a En revisión. Calificar tampoco cambia Finalizada por un estado nuevo. No se exige un código de inicio ni estados de desplazamiento para el cierre del servicio.')
-add('Solicitud: abierta, cerrada a postulaciones al contratar o cancelada; el rechazo/vencimiento de la orden puede reabrirla. No se fija un vencimiento automático de solicitud sin una política configurada.')
-add('Pago del servicio y regularización: pendiente, pendiente de acreditación cuando se adjunta transferencia, acreditado, rechazado o en revisión. Aprobado en MP corresponde a acreditado dentro de la representación. El rechazo de un pago permite reintento y no rechaza por sí solo la orden.')
-add('Alta: incompleta, pendiente de verificación o activa. La revisión documental puede exigir correcciones. Ausencia de horario y franja ocupada no son suspensiones de cuenta. Un reporte puede quedar pendiente, en revisión o resuelto; su resolución no acredita dinero automáticamente.')
-add('Solo después de reconocer/acreditar el pago del servicio se finaliza la orden y se habilita una reseña por participante. Los movimientos de cobro, comisión y regularización deben registrarse una sola vez por operación reconocida, incluso si se repite una confirmación.')
-state_block=story[state_start:]
-del story[state_start:]
-story.append(KeepTogether(state_block))
-
-story.append(PageBreak())
-heading('14.2. Requerimientos funcionales del MVP/POC',1)
-add('Se conservan RF-01 a RF-30 para mantener las referencias históricas y se aclara su redacción. RF-31 a RF-35 completan Mercado Pago, resumen de comisiones, regularización, finalización común y revisión administrativa. Todos están incluidos en la POC; su ejecución externa real queda fuera de esta entrega.')
-table(['Código','Módulo','Requerimiento','POC'],[(ident('RF',n),m,t,'Sí') for n,m,t in RF],[47,81,342,38])
-
-criteria_start=len(story)
-heading('14.3. Criterios de coherencia de la demostración')
-for item in [
- 'Toda función incluida en el recorte tiene al menos un RF y un CU asociado. Una vista visual adicional, como Día/Semana, se vincula al CU existente que representa.',
- 'Los tres medios previstos para pagar el servicio son efectivo, transferencia y Mercado Pago. Gestionar referencias de tarjetas no incorpora un cobro directo con tarjeta independiente.',
- 'Cliente y prestador observan la misma orden y el mismo importe. Una corrección administrativa se informa a ambos antes de continuar el pago.',
- 'La comisión por efectivo es deuda del prestador; la comisión digital es una deducción del cobro representado. No se suman las dos para una misma operación.',
- 'Una transferencia adjuntada y un resultado MP pendiente no son acreditaciones. La deuda o el neto solo cambian al representar una confirmación válida.',
- 'Los documentos y los ejemplos de la POC son ficticios. Los gráficos y conclusiones de las encuestas anteriores no se recalculan ni se reinterpretan como resultados nuevos.',
-]:bullet(item)
-criteria_block=story[criteria_start:]
-del story[criteria_start:]
-story.append(KeepTogether(criteria_block))
-
-heading('15. Casos de uso y trazabilidad',1)
-add('Se mantiene la numeración CU-01 a CU-23 y se completa su coherencia con los recorridos revisados. Se agregan CU-24 (Mercado Pago), CU-25 (consulta de cobros/comisiones), CU-26 (regularización), CU-27 (finalización común) y CU-28 (revisión de pagos). No se agrega un CU separado por cada botón o modo de visualización.')
-heading('15.1. Actores del sistema')
-table(['Actor','Tipo','Responsabilidad en esta entrega'],D['ACTORS'],[110,91,307])
-heading('15.1.1. Relación entre acciones del cliente y del prestador')
-add('El alta del prestador parte de una cuenta cliente. La contratación la inicia el cliente; la aceptación y finalización las informa el prestador. El cliente reconoce el importe y paga el servicio. Ambos pueden consultar la orden y calificar después del cierre. El prestador consulta su comisión y, si corresponde, paga su propia deuda a Royal. El administrador representa decisiones y verificaciones cuando el circuito las necesita.')
-
-story.append(PageBreak())
-heading('15.2. Matriz de trazabilidad CU - RF',1)
-add('La X indica que el caso de uso implementa o utiliza explícitamente el requerimiento. Los bloques A, B y C conforman una única matriz; las filas CU-01 a CU-28 se repiten para facilitar la lectura.')
-for label,start,end in [('A',1,12),('B',13,24),('C',25,35)]:
-    heading(f'Bloque {label}: RF-{start:02d} a RF-{end:02d}')
-    ns=list(range(start,end+1))
-    rows=[(ident('CU',c['number']),)+tuple('X' if n in c['rfs'] else '' for n in ns) for c in CU]
-    table(['CU']+[ident('RF',n) for n in ns],rows,[58]+[(W-58)/len(ns)]*len(ns),small=True)
-    story.append(PageBreak())
-heading('15.2.1. Trazabilidad inversa y cobertura')
-add('Todos los RF incluidos tienen cobertura. La siguiente relación permite localizar el caso correspondiente sin interpretar una celda vacía como un requisito fuera del MVP.')
-table(['RF','Casos asociados','RF','Casos asociados'],[(ident('RF',a),', '.join(inverse[ident('RF',a)]),ident('RF',b) if b<=35 else '',', '.join(inverse[ident('RF',b)]) if b<=35 else '') for a,b in zip(range(1,19),range(19,37))],[45,209,45,209])
-
-story.append(PageBreak())
-heading('15.3. Especificación de casos de uso',1)
-add('Los flujos describen el comportamiento acordado para la POC. Las operaciones externas se representan con datos de prueba, sin afirmar validación bancaria, documental o de identidad real. Los parámetros numéricos de demostración se identifican en 14.1.3.')
+for name,file in [('Body','times.ttf'),('Bold','timesbd.ttf')]:pdfmetrics.registerFont(TTFont(name,'C:/Windows/Fonts/'+file))
+pdfmetrics.registerFontFamily('Body',normal='Body',bold='Bold',italic='Body',boldItalic='Bold')
+styles=getSampleStyleSheet();blue=colors.HexColor('#1F4E78')
+for name,size,leading,kw in [('Text',10.5,13.5,dict(spaceAfter=7)),('H1x',15,18,dict(fontName='Bold',textColor=blue,spaceAfter=10,keepWithNext=True)),('H2x',13,16,dict(fontName='Bold',spaceAfter=7,spaceBefore=9,keepWithNext=True)),('Cell',9.5,11.5,dict()),('Head',8,10,dict(fontName='Bold',textColor=colors.white)),('Matrix',7.5,9,dict()),('MatrixHead',6.5,8,dict(fontName='Bold',textColor=colors.white))]:
+ attrs=dict(fontName='Body',fontSize=size,leading=leading);attrs.update(kw);styles.add(ParagraphStyle(name=name,**attrs))
+styles.add(ParagraphStyle(name='WhiteCell',parent=styles['Cell'],textColor=colors.white))
+def p(t,style='Text'):return Paragraph(escape(str(t)),styles[style])
+story=[];md=[]
+def heading(t,level=2):story.append(p(t,'H1x' if level==1 else 'H2x'));md.append('#'*level+' '+t+'\n')
+def add(t):story.append(p(t));md.append(t+'\n')
+def table(headers,rows,widths,matrix=False):
+ rows=list(rows);data=[[p(h,'MatrixHead' if matrix else 'Head') for h in headers]]+[[p(v,'Matrix' if matrix else 'Cell') for v in row] for row in rows]
+ t=Table(data,colWidths=widths,repeatRows=1,hAlign='LEFT');t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),blue),('GRID',(0,0),(-1,-1),.4,colors.HexColor('#B6C0C7')),('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),('LEFTPADDING',(0,0),(-1,-1),4),('RIGHTPADDING',(0,0),(-1,-1),4)]));story.extend([t,Spacer(1,7)])
+ md.extend(['| '+' | '.join(headers)+' |','| '+' | '.join('---' for h in headers)+' |']+['| '+' | '.join(str(v) for v in row)+' |' for row in rows]+[''])
+def build(path,items):SimpleDocTemplate(str(path),pagesize=(595.28,841.89),leftMargin=62.35,rightMargin=62.35,topMargin=57,bottomMargin=48,title='Royal Solutions - POC',author='Equipo Royal Solutions').build(items)
+heading('15.4. Complementos de la POC',1)
+add('Se conservan la portada, el lema, el logo, la estructura, RF-01 a RF-30, CU-01 a CU-23 y las matrices originales. Los complementos siguientes cubren funciones presentes en las apps que no tenían un caso explícito. No sustituyen ni renumeran los casos anteriores.')
+heading('15.4.1. Ajustes de alcance')
+for text in [
+ 'El acceso público abre las apps de cliente y prestador. Se retiran la presentación web y el aviso de alcance. Los accesos individuales siguen disponibles.',
+ 'La app prestador no incluye billetera. El cálculo de la comisión previsto en RF-19, RF-20 y RF-21 permanece interno; el panel interno registra sus regularizaciones. La reputación no muestra códigos de orden ni el contador de cancelaciones tardías.',
+ 'Rubros y descripción se edita sin información de riesgo o porcentaje de comisión y sin pasar por zona y disponibilidad. Los barrios y horarios se actualizan en su propio apartado.',
+ 'La agenda muestra únicamente el día elegido y omite franjas no disponibles sin reservas. Las órdenes ya reservadas se conservan si cambian los horarios.',
+ 'Se retiran el selector de tema y los atajos Volver a contratar de inicio e historial. Los accesos rápidos muestran Entrar como y el nombre. La consulta del historial se mantiene.',
+ 'La POC representa pagos, correo, documentos, notificaciones y ubicación con datos locales. No se afirma integración externa ni un sistema productivo; las funciones futuras del alcance completo conservan su carácter de visión del proyecto.',
+]:add(text)
+heading('15.4.2. Requerimientos adicionales')
+table(['Requerim.','Detalle','Módulo'],[(ident('RF',n),t,m) for n,m,t in RF],[53,337.58,80])
+story.append(PageBreak());heading('15.4.3. Extensión de la matriz de trazabilidad CU - RF',1)
+add('Se mantienen intactas las matrices de 15.2. Estos bloques agregan las filas CU-24 a CU-33 y las columnas RF-31 a RF-38. Ningún caso nuevo modifica las relaciones originales. No hay nuevas referencias a RF-01 a RF-15.')
+for title,ns in [('Bloque B adicional - RF-16 a RF-30',list(range(16,31))),('Bloque C - RF-31 a RF-38',list(range(31,39)))]:
+ heading(title)
+ table(['CU']+[ident('RF',n) for n in ns],[(ident('CU',c['number']),)+tuple('X' if n in c['rfs'] else '' for n in ns) for c in CU],[42]+[(470.58-42)/len(ns)]*len(ns),matrix=True)
+story.append(PageBreak());heading('15.4.4. Casos de uso adicionales',1)
 for c in CU:
-    group=[p(ident('CU',c['number'])+' - '+c['title'],'H2x')]
-    group.append(Paragraph('<b>Actor:</b> '+escape(c['actor'])+'<br/><b>RF asociados:</b> '+escape(refs(c['rfs']))+'<br/><b>Incluido:</b> MVP/POC',styles['Main']))
-    for label,key in [('Descripción','description'),('Precondiciones','pre'),('Postcondiciones','post')]:
-        group.append(Paragraph('<b>'+label+':</b> '+escape(c[key]),styles['Main']))
-    group.append(Paragraph('<b>Flujo principal</b>',styles['Main']))
-    for i,s in enumerate(c['steps'],1):group.append(p(f'{i}. {s}','Bulletx'))
-    group.append(Paragraph('<b>Flujos alternativos</b>',styles['Main']))
-    for i,s in enumerate(c['alternatives'],1):group.append(p(f'A{i}. {s}','Bulletx'))
-    group.append(Spacer(1,8))
-    story.append(KeepTogether(group))
-    md.extend(['### '+ident('CU',c['number'])+' - '+c['title'],'',f"**Actor:** {c['actor']}  ",f"**RF:** {refs(c['rfs'])}  ",'**Incluido:** MVP/POC',''])
-    for label,key in [('Descripción','description'),('Precondiciones','pre'),('Postcondiciones','post')]:md.append(f'**{label}:** {c[key]}\n')
-    md.append('**Flujo principal**\n');md.extend(f'{i}. {s}' for i,s in enumerate(c['steps'],1))
-    md.append('\n**Alternativas**\n');md.extend(f'- {s}' for s in c['alternatives']);md.append('')
+ items=[p(ident('CU',c['number'])+' - '+c['title'],'H2x')]
+ rows=[('Actor principal',c['actor']),('RF asociados',refs(c['rfs'])),('Descripción',c['description']),('Precondiciones',c['pre']),('Postcondiciones',c['post']),('Flujo principal','\n'.join(f'{i}. {x}' for i,x in enumerate(c['steps'],1))),('Flujos alternativos','\n'.join(f'{i}. {x}' for i,x in enumerate(c['alternatives'],1)))]
+ values=[[Paragraph('<b>'+escape(a)+'</b>',styles['Cell']),Paragraph(escape(b).replace('\n','<br/>'),styles['Cell'])] for a,b in rows]
+ values[0]=[Paragraph('<b>'+escape(rows[0][0])+'</b>',styles['WhiteCell']),p(rows[0][1],'WhiteCell')]
+ t=Table(values,colWidths=[234,236.58],hAlign='LEFT');t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),blue),('GRID',(0,0),(-1,-1),.6,colors.black),('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),('LEFTPADDING',(0,0),(-1,-1),4),('RIGHTPADDING',(0,0),(-1,-1),4)]));items.extend([t,Spacer(1,8)]);story.append(KeepTogether(items))
+ md.extend(['### '+ident('CU',c['number'])+' - '+c['title'],'']+[f'**{a}:** {b}\n' for a,b in rows])
+annex=TMP/'complementos_poc.pdf';build(annex,story)
+(ROOT/'docs/SECCIONES_14_15_POC.md').write_text('# Complementos; secciones originales conservadas en el PDF\n\n'+'\n'.join(x.rstrip() for x in md).rstrip()+'\n',encoding='utf-8')
 
-OUT.parent.mkdir(parents=True,exist_ok=True);TMP.mkdir(parents=True,exist_ok=True)
-part=TMP/'secciones_14_15_poc.pdf'
-def footer(canvas,doc):
-    canvas.saveState()
-    canvas.setStrokeColor(colors.HexColor('#B6C0C7'));canvas.line(44,39,552,39)
-    canvas.setFont('Body',8);canvas.setFillColor(colors.HexColor('#53636E'))
-    canvas.drawString(44,27,'Royal Solutions | Especificación funcional POC | 26/10/2026')
-    canvas.drawRightString(552,27,str(doc.page+15));canvas.restoreState()
-doc=SimpleDocTemplate(str(part),pagesize=(596,842),leftMargin=44,rightMargin=44,topMargin=43,bottomMargin=53,title=D['TITLE'],author='Equipo Royal Solutions',allowSplitting=True)
-doc.build(story,onFirstPage=footer,onLaterPages=footer)
+# Sustituir únicamente la sección 16 antigua: una lámina completa y reglas concisas.
+story=[];heading('16.1. Lectura del modelo y reglas de integridad',1)
+for t in [
+ 'Un usuario puede tener un único perfil de prestador. Sus rubros, zonas y franjas se relacionan mediante PRESTADOR_RUBRO, COBERTURA y DISPONIBILIDAD. Los documentos se vinculan al prestador y, cuando corresponde, al rubro.',
+ 'El cliente publica solicitudes y cada solicitud admite postulaciones de distintos prestadores. La combinación solicitud + prestador es única. ORDEN registra cliente, prestador y rubro; solicitud y postulación son opcionales para permitir la contratación directa desde el catálogo. Si existen, deben corresponder a los mismos participantes y rubro.',
+ 'PAGO se vincula de forma única con la orden. Los reintentos actualizan su estado e historial. MOVIMIENTO conserva los asientos internos de cobro, comisión y regularización, sin implicar una billetera del prestador. La acreditación no duplica movimientos.',
+ 'Una orden finalizada admite hasta dos reseñas: una por participante. La combinación orden + autor es única; autor y destinatario deben ser las contrapartes. El vínculo se conserva aunque el código no se muestre en la reputación.',
+ 'Los reportes del servicio y sus evidencias se distinguen de las denuncias de reseñas. Mensajes, notificaciones, favoritos, tarjetas y recuperación de contraseña conservan sus relaciones con usuarios, prestadores u órdenes según el diagrama.',
+ 'La dirección de una solicitud u orden es una copia histórica: no cambia si luego se edita una dirección del usuario. Las reservas confirmadas se mantienen al editar la disponibilidad.',
+]:add(t)
+heading('16.2. Correspondencia con el POC y límites del modelo')
+add('El DER reúne en una sola vista los datos de los casos de uso originales y adicionales. Las entidades de usuario, prestador y documentos respaldan el alta; solicitud, postulación y orden respaldan la contratación; pago y movimiento respaldan cobros y comisiones; reseña y reporte respaldan reputación y moderación. Las restantes entidades completan acceso, comunicación y datos del perfil.')
+add('PK identifica la clave primaria, FK la clave foránea y UK una restricción única. Las cardinalidades están indicadas en los extremos. Este es el modelo lógico de la POC; la implementación actual utiliza objetos JSON en localStorage, sin una base SQL desplegada. El diseño no introduce nuevas pantallas ni funciones fuera del alcance.')
+rules=TMP/'reglas_der.pdf';build(rules,story)
+der=TMP/'der-completo.pdf';assert len(PdfReader(der).pages)==1
+# PDF separado: un solo DER y una sola página.
+writer=PdfWriter();writer.append(PdfReader(der));writer.add_metadata({'/Title':'Royal Solutions - DER completo','/Author':'Equipo Royal Solutions'})
+der_out=OUT/'RoyalSolutions_DER_Actualizado.pdf'
+with der_out.open('wb') as f:writer.write(f)
 
-original=PdfReader(SOURCE)
-assert len(original.pages)==33 and original.pages[15].extract_text().strip().startswith('14.'), 'Fuente inesperada: revisar punto de corte'
 writer=PdfWriter()
-writer.append(original,pages=(0,15))
-writer.append(PdfReader(part))
-writer.add_metadata({'/Title':D['TITLE'],'/Author':'Equipo Royal Solutions','/Subject':'Secciones 14/15 corregidas; páginas 1-15 originales conservadas','/Keywords':'POC, MVP, alcance, requerimientos, casos de uso, trazabilidad'})
-with OUT.open('wb') as f:writer.write(f)
-
-final=PdfReader(OUT)
-preserved=[]
-for i in range(15):
-    a,b=original.pages[i],final.pages[i]
-    assert a.extract_text()==b.extract_text(),f'Texto alterado: página {i+1}'
-    ah=hashlib.sha256(a.get_contents().get_data()).hexdigest()
-    bh=hashlib.sha256(b.get_contents().get_data()).hexdigest()
-    assert ah==bh,f'Contenido gráfico alterado: página {i+1}'
-    imgs_a=sorted(hashlib.sha256(im.data).hexdigest() for im in a.images)
-    imgs_b=sorted(hashlib.sha256(im.data).hexdigest() for im in b.images)
-    assert imgs_a==imgs_b,f'Imagen alterada: página {i+1}'
-    preserved.append(dict(page=i+1,content_sha256=ah,image_count=len(imgs_a)))
-new_text='\n'.join(pg.extract_text() for pg in final.pages[15:])
-for n in range(1,36):assert ident('RF',n) in new_text
-for n in range(1,29):assert ident('CU',n) in new_text
-assert all(len(pg.extract_text().strip())>80 for pg in final.pages[15:]),'Página nueva casi vacía'
-report=dict(output=str(OUT),source=str(SOURCE),pages=len(final.pages),original_pages_preserved=preserved,requirements=35,use_cases=28,scope_rows=len(SCOPE),traceability=inverse,coverage_ok=True)
+for i in range(33):writer.add_page(patched_reader.pages[i] if i+1 in patched_pages else source.pages[i])
+writer.append(PdfReader(annex));writer.append(PdfReader(der));writer.append(PdfReader(rules))
+for i in range(33,len(writer.pages)):
+ page=writer.pages[i];w,h=float(page.mediabox.width),float(page.mediabox.height);buf=BytesIO();c=canvas.Canvas(buf,pagesize=(w,h));c.setFont('Body',8);c.drawRightString(w-42,22,str(i+1));c.save();buf.seek(0);page.merge_page(PdfReader(buf).pages[0])
+writer.add_metadata({'/Title':'Royal Solutions - POC conservado con ajustes','/Author':'Equipo Royal Solutions','/Subject':'Original conservado, ajustes puntuales, complementos y un único DER'})
+poc_out=OUT/'RoyalSolutions_POC_Actualizado.pdf'
+with poc_out.open('wb') as f:writer.write(f)
+final=PdfReader(poc_out);preserved=[]
+for i in range(33):
+ if i+1 in patched_pages:continue
+ a,b=source.pages[i],final.pages[i]
+ assert a.extract_text()==b.extract_text(),i+1
+ assert a.get_contents().get_data()==b.get_contents().get_data(),i+1
+ assert sorted(hashlib.sha256(im.data).hexdigest() for im in a.images)==sorted(hashlib.sha256(im.data).hexdigest() for im in b.images),i+1
+ preserved.append(i+1)
+assert {1,21,22}<=set(preserved)
+text='\n'.join(pg.extract_text() or '' for pg in final.pages)
+assert all(ident('RF',n) in text for n in range(1,39))
+assert all(ident('CU',n) in text for n in range(1,34))
+assert all(name in text for name in M['ENTITIES'])
+report=dict(output=str(poc_out),der=str(der_out),pages=len(final.pages),der_pages=1,original_pages_unchanged=preserved,original_cover_and_logo_preserved=True,original_traceability_matrices_preserved=True,patches=patches,additional_requirements=8,additional_cases=10,entities=len(M['ENTITIES']),relations=len(M['RELATIONS']))
 (TMP/'validacion_documento.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
-(ROOT/'docs'/'SECCIONES_14_15_POC.md').write_text('\n'.join(line.rstrip() for line in md)+'\n',encoding='utf-8')
-print(json.dumps({k:report[k] for k in ['output','pages','requirements','use_cases','scope_rows','coverage_ok']},ensure_ascii=False))
-print('Primeras 15 páginas: texto, streams gráficos e imágenes idénticos al original.')
+print(json.dumps({k:v for k,v in report.items() if k not in ['patches','original_pages_unchanged']},ensure_ascii=False))

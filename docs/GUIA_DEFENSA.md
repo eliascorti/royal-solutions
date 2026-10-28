@@ -18,7 +18,7 @@ Fuentes: sección 8 y sección 14. Los gráficos muestran diez respuestas por en
 
 Advertir las diferencias del documento: boca a boca 50% en gráfico de p. 9 frente a 60% en texto de p. 3; perfil “muy útil” 50% en gráfico de p. 13 frente a 60% en conclusión de p. 15. No inventar una conciliación.
 
-Mostrar `presentacion.html#matriz` y explicar:
+Mostrar la sección 14 y las matrices de trazabilidad del PDF, conservadas con sus complementos, y explicar:
 
 - **MVP:** recorte para validar el circuito principal, según sección 14.
 - **MVP avanzado:** detalle del prototipo, alternativas y relación entre los tres roles.
@@ -39,7 +39,7 @@ Transición: “La contratación genera una orden pendiente. Ahora el prestador 
 
 ## 4. Corti: cierre, administración y viabilidad técnica
 
-Fuentes: CU-14 a CU-23. Aceptar la orden, informar finalización y monto, confirmar el efectivo y mostrar la comisión. Ejemplo: $30.000 al 4% de demo genera $1.200 de deuda por efectivo; el documento define el rango 3-5%, no su asignación exacta por rubro.
+Fuentes: CU-14 a CU-23. Aceptar la orden, informar finalización y monto, confirmar el efectivo y consultar la comisión desde el panel interno. Ejemplo: $30.000 al 4% de demo genera $1.200 de deuda por efectivo; el documento define el rango 3-5%, no su asignación exacta por rubro.
 
 Las dos partes califican una sola vez y solo si participaron en la orden finalizada. Mostrar usuarios y moderación básica. Resolver un reporte no demuestra una devolución ni una acreditación bancaria.
 
@@ -49,11 +49,11 @@ Cierre: “El prototipo permite evaluar un recorrido consistente con los casos d
 
 ## Preparación conjunta
 
-1. Abrir la presentación, la vista demo y una pestaña de administración.
+1. Abrir las apps directamente desde la raíz y una pestaña de administración si se necesita.
 2. Mantener el logo dos segundos y cargar el escenario, o publicar y postularse manualmente.
 3. Ensayar el circuito completo: aceptar, finalizar, pagar y calificar requieren acciones manuales.
-4. Usar efectivo como recorrido principal y transferencia como alternativa. Chat, mapa y checkout se explican aparte como alcance completo.
-5. Usar esta copia local. El sitio Netlify enlazado en el PDF sigue mostrando su versión publicada hasta una publicación posterior.
+4. Usar efectivo como recorrido principal y transferencia como alternativa. Chat, mapa y checkout se explican según el alcance y los complementos del documento.
+5. Verificar la versión publicada después de cada push; las pruebas locales no confirman por sí solas un despliegue.
 
 ## Preguntas que todos deben poder responder
 

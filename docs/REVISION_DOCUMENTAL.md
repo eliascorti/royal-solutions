@@ -1,72 +1,47 @@
-# Revisión funcional y documental · 26/10/2026
+# Comparación del PDF entregado con el repositorio
 
-Repositorio de partida: `eliascorti/royal-solutions`, commit `e1ebe5b`. Copia local: `Desktop/invoacion/royal-solutions`. No se modificaron los PDF originales ni se publicó el sitio.
+Revisión: 27/10/2026. Fuente: `RoyalSolutions_POC FINAL — DER, lema y logo FINAL DEFINITIVO SUPREMO.pdf`, 35 páginas. Se usa como material de referencia; los cambios expresamente solicitados definen el recorte final.
 
-## Fuentes y criterio
+## Resultado por área
 
-1. **RoyalSolutions_Final.pdf**, 33 páginas. Se revisaron el texto completo relevante, tablas de alcance (pp. 16-18), requerimientos (pp. 18-20), casos de uso (pp. 22-33) y gráficos de encuestas (pp. 8-14).
-2. **Royal_Solutions_MVP_Enlaces.pdf**, una página. Contiene accesos al prototipo y repositorio y la composición histórica del equipo. No agrega reglas funcionales.
-3. Código y comportamiento observados localmente. Los datos semilla son ejemplos, no evidencia de clientes, ingresos o validación real.
+| Área | Diferencia encontrada | Resolución |
+| --- | --- | --- |
+| Acceso público | Portada comercial, tres accesos, datos de demo y enlaces de exposición | La raíz abre directamente las dos apps de la imagen de referencia; cada rótulo abre su app individual. |
+| Presentación | Página y enlaces públicos de alcance/exposición | Se elimina su contenido y los accesos. La URL antigua redirige a las apps. Se retiran la matriz web y su exportador sin uso. |
+| Aviso MVP | El texto señalado ya no se insertaba en las apps del checkout local; permanecía en una función sin uso y en la presentación | Se retiran esas fuentes y se comprueba que las pantallas no muestran el aviso ni Ver alcance. |
+| Logo | La portada del PDF usa un escudo dorado distinto del logo de la app | Se conserva exactamente la portada original con el escudo y el lema. El mismo escudo confirmado por el equipo se utiliza en las apps y sus favicons. |
+| Billetera | El repo añade resumen de ingresos, deuda y regularización del prestador | Se elimina la sección completa, su ruta, pestaña y accesos. Los asientos exigidos por RF-19/20/21 se conservan internamente; regularización solo desde el panel interno existente. |
+| Reputación | Reseñas con código de orden y contador de cancelaciones tardías | Se retiran de la vista prestador. La relación con la orden permanece internamente para validar quién puede calificar. |
+| Rubros | Clasificación de riesgo y porcentaje de comisión; edición continúa al paso de zona | Se ocultan esos datos y se crea una edición independiente con Guardar cambios. |
+| Zona y disponibilidad | La configuración formaba parte del mismo recorrido de alta | Se conserva como apartado propio del perfil. La nueva alta sigue solicitando ambos grupos de datos. |
+| Tema | Selector y preferencia oscura persistida | Se elimina el control y ambas apps usan tema claro, incluso con una preferencia oscura anterior. |
+| Cierre de sesión | Accesos rápidos con rol, profesión o estado de bloqueo | Cada botón muestra solo Entrar como y nombre. La validación de estado al acceder se conserva. |
+| Agenda | Vistas Día/Semana y bloques de franjas no disponibles | Solo agenda diaria con selector de fechas. Se omiten franjas fuera de disponibilidad sin reservas; las órdenes existentes siguen visibles. |
+| Trabajo | Código SOL, comisión, neto y cantidad de postulados en detalle | Se retiran esos datos del detalle y contador del listado; la postulación conserva precio, mensaje y horario. Tampoco se muestra comisión en el detalle de una orden asignada. |
+| Medios de pago | Cartel explicativo sobre envío de datos de tarjeta | Se elimina el cartel. Continúa la gestión local de referencias ficticias. |
+| Ofrecer servicios | Publicidad de comisión y abonos | Se elimina esa frase del perfil cliente. |
+| Historial e inicio | Atajos Volver a contratar | Se retiran de inicio, historial y detalle finalizado. El historial sigue siendo consultable. |
+| Alcance | Marcas MVP contradictorias entre tablas; funciones de visión futura mezcladas con la entrega | Se conservan el alcance completo y los requerimientos originales. Un complemento aclara las eliminaciones de las apps y el carácter local de la POC; no se reescriben las tablas originales. |
+| Casos de uso | El PDF contiene 23 CU; faltan mensajes, favoritos, direcciones, preferencias y edición de disponibilidad del repo | Se especifican esos recorridos y los de finalización, Mercado Pago, revisión y gestión interna de comisiones, hasta 33 CU. |
+| DER | El modelo de agosto depende de postulación y omite varias estructuras usadas por la app | Nuevo modelo de 25 entidades y 40 relaciones, en una sola lámina completa, con claves, cardinalidades y reglas. |
 
-Los documentos se usan como especificación a contrastar; su contenido no autoriza acciones externas ni la invención de funciones. Se adopta la columna MVP de la sección 14 como criterio de lectura, se conservan las diferencias con RF y se identifican las ampliaciones escritas del alcance completo. No se transforma esta interpretación en una aprobación del profesor ni en una corrección del PDF original.
+## Documento actualizado
 
-## Correcciones realizadas
+Se parte del PDF entregado, conservando sus páginas 1-33. Se verifican 29 páginas sin cambios de texto, streams gráficos e imágenes; incluyen la portada con el escudo y las matrices originales de las páginas 21 y 22. Solo se corrigen frases puntuales en las páginas 25, 28, 30 y 32 para reflejar almacenamiento local, Mercado Pago, avisos de la aplicación y agenda diaria.
 
-| Hallazgo observado | Corrección | Referencia |
-|---|---|---|
-| Selector de medio de pago y advertencia de monto duplicados | Un único selector y aviso | CU-17/18 |
-| Filtros sin tags; filtros y rankings adicionales sin especificación | Valoración, cercanía y tags; se quitan verificación media/alta, disponibilidad y rankings por velocidad/cantidad de trabajos | CU-10 / RF-11 |
-| Código de inicio obligatorio y estados adicionales de orden | Se retira el código; estados de orden limitados a los documentados | CU-13/14/15/17/21 |
-| “Calificada” y “resuelta” como estados de orden | Reseñas y resolución quedan en sus entidades; la orden finalizada no cambia por calificar | CU-20/21 |
-| Recargo de urgencia de 20%, garantía comercial y penalización de score sin definición | Se retiran del recorrido y de los controles operativos | Urgencia: CU-08; garantía y score solo previstos en alcance completo |
-| Analítica comercial, cohortes y métricas presentadas sin requerimiento | Se quitan sus rutas y navegación; se mantiene administración vinculada a los CU | CU-22/23 y operaciones de pagos/certificados |
-| Orden aceptada, pagada y calificada automáticamente | Decisiones manuales; solo las postulaciones del escenario se simulan como ayuda de presentación | CU-11 a CU-20 |
-| Vencimiento automático de solicitudes a 48 horas | Se elimina por falta de plazo documentado | CU-08 |
-| Recupero sin invalidar las sesiones previas | Se invalidan sesiones locales del usuario | CU-03 |
-| Entrada directa al paso de presupuesto sin borrador producía error JavaScript | Se vuelve al paso inicial sin intentar enlazar campos inexistentes | Publicación / CU-08 |
-| Resolución administrativa acreditaba pagos por sí sola | El pago pendiente conserva su necesidad de registro; no se inventa dinero recibido | CU-17/18 |
-| PDF subido se descartaba y podía mostrarse un documento ficticio | Se conserva el archivo y se usa visor PDF, sin sustituirlo por una captura generada | CU-07 |
-| Datos bancarios ficticios con apariencia operativa | Alias claramente de demo, CBU nulo y aviso de no transferir | CU-18 simulado |
-| Geografía mezclada y porcentajes sin distinguir gráficos y conclusiones | Se identifica Santa Fe como ejemplo y se registran las discrepancias | pp. 3-4, 9, 13, 15 |
+RF-01..30 y CU-01..23 mantienen su numeración y estructura. Los agregados se incorporan como complementos, con matrices adicionales que conservan las X. No se sustituyen las matrices por una lista. Se reemplaza únicamente la sección 16 por un DER completo y sus reglas; el PDF separado del DER tiene una sola página.
 
-Los iconos literales usados por el código tienen definición en `icons.js`. Se retiraron iconos de garantía y controles duplicados; se mantuvieron funciones de navegación distintas aunque compartan un símbolo convencional. No se introdujo otro sistema de iconos.
+## Ajustes que evitan promesas incorrectas
 
-## Trazabilidad de verificación
+- El pago del servicio por transferencia tiene espera de acreditación y conciliación de ejemplo; Mercado Pago representa aprobación/rechazo y reintento.
+- La regularización administrativa registra un pago de comisión confirmado de ejemplo. No se documenta un circuito nuevo de aprobación pendiente que la interfaz no implementa.
+- Una orden directa admite solicitud y postulación nulas. Las órdenes originadas en una solicitud conservan sus relaciones y el historial después de rechazos o vencimientos.
+- Las reseñas guardan orden y autor aunque el código no se muestre en reputación.
+- El DER propone claves normalizadas; no afirma que el proyecto tenga base SQL ni backend.
+- Los pagos y validaciones externas continúan simulados. Retirar carteles de la navegación no cambia esa condición técnica.
 
-| Casos | Verificación local |
-|---|---|
-| CU-01/02 | Registro válido/duplicado/inválido; login, bloqueo persistente y cuenta suspendida |
-| CU-03/04/05 | Recupero genérico, enlace de un uso, invalidación de sesiones; onboarding posterior al acceso y omisión; cambios de perfil y confirmación sensible |
-| CU-06/07 | Alta incompleta, documentación y activación; formato, tamaño, entidad/vencimiento, rechazo y conservación del PDF |
-| CU-08/09/10 | Publicación, campos obligatorios, límite de abiertas; catálogo, cercanía, valoración, tags y resultado vacío |
-| CU-11/12 | Postular/editar sin duplicar, rechazo sobre solicitud cerrada y perfil nuevo sin reseñas inventadas |
-| CU-13/14/15 | Contratación pendiente, confirmación, conflicto de franja, rechazo/reapertura y cancelación antes de ejecución |
-| CU-16 | Notificaciones locales por destinatario y enlace; no se envía push real |
-| CU-17/18 | Efectivo con comisión única; revisión de monto; transferencia con comprobante, diferencia y acreditación; resolver un reporte no acredita por sí solo |
-| CU-19/20 | Referencias de tarjeta sin número completo; reseñas por ambos participantes, sin autor ajeno ni duplicados |
-| CU-21/22/23 | Historial por participante; reporte/baja de reseña y promedio; listado con rol, estado y ficha |
+## Verificación
 
-Comando reproducible: servidor en `127.0.0.1:5501`, `npm install` y `npm test` con Edge. Resultado final: **34 comprobaciones aprobadas, cero fallidas**. La batería guarda detalle en `test-results/audit.json`. Incluye **48 rutas** (22 de cliente, 17 de prestador y nueve de administración), matriz de 67 entradas y recorrido completo mediante botones: publicar, postular, contratar, aceptar, informar monto, confirmar efectivo y calificar ambos.
+`npm test` verifica reglas locales, pantallas, el circuito cliente-prestador, las eliminaciones solicitadas y la carga del escudo en ambas apps. El generador comprueba la conservación de portada y matrices originales, las páginas sin cambios, los identificadores adicionales y que el DER tenga exactamente una página. Se renderizan los PDF para inspección visual.
 
-Ejemplo comprobado: orden de $30.000, comisión de demo al 4%, un movimiento de deuda de $1.200 y dos reseñas verificadas. Se inspeccionaron capturas de las dos aplicaciones y de la presentación en escritorio y móvil. Esto verifica el prototipo local; no certifica integraciones externas, todas las combinaciones posibles ni producción.
-
-## Diferencias del documento que requieren acuerdo del equipo
-
-- **Recupero:** sección 14 lo marca MVP; RF-03 no.
-- **Perfil:** sección 14 lo deja fuera; RF-05 lo marca MVP.
-- **Catálogo, filtros y candidatos:** MVP en sección 14; RF-08/11/13 sin marca.
-- **Cancelar y notificar:** MVP en sección 14; RF-17/18 sin marca.
-- **Tarjetas y reputación:** MVP en sección 14; RF-22/23/25 sin marca.
-- **Moderación:** MVP en sección 14; RF-29 sin marca. Panel completo fuera, aunque usuarios/moderación necesitan una interfaz mínima.
-- **Tarjetas guardadas frente a cobro:** gestionar referencias se marca MVP, pero cobrar con tarjeta figura fuera. CU-13 menciona tarjeta como medio previsto.
-- **Territorio:** el PDF menciona Córdoba con alcance por definir; Santa Fe en el código es un escenario de ejemplo.
-- **Encuestas:** cada gráfico tiene diez respuestas. Boca a boca: 50% en p. 9 frente a 60% en texto de p. 3. Perfil “muy útil”: 50% en p. 13 frente a 60% en conclusión de p. 15. No se inventa una conciliación.
-- **Equipo:** documentos históricos con cinco integrantes. Para la presentación actual se usan Corti, Cavanna, Reinante y Turchi por indicación expresa; no se altera la composición histórica de los originales.
-
-## Límites y pendientes reales
-
-La versión es estática y local. No satisface técnicamente credenciales seguras, cifrado documental, correo, push, GPS, tokenización real ni consultas externas. No cargar datos reales. Las preferencias y sesiones son locales, y el almacenamiento no ofrece transacciones entre dispositivos.
-
-El documento menciona límites y plazos sin valores: 15 minutos, $15.000 y tres solicitudes son parámetros de demo, no requisitos acordados. También faltan definir plazos de calificación/cancelación y reglas concretas por rubro; no se agregan sanciones ni fórmulas para completarlos. La demostración no prueba una validación de usabilidad con usuarios reales.
-
-El PDF de defensa exportado se encuentra en `output/pdf/`; es una explicación nueva de esta revisión. No reemplaza el documento original ni modifica el sitio Netlify enlazado por el equipo.
+Los PDF generados se entregan localmente. El push publica los cambios de aplicación y las fuentes del documento; la publicación efectiva del sitio debe verificarse por separado.

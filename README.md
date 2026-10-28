@@ -1,53 +1,47 @@
-# Royal Solutions · MVP avanzado académico
+# Royal Solutions
 
-Equipo actual: **Corti, Cavanna, Reinante y Turchi**.
+Apps de cliente y prestador para publicar y contratar servicios de oficios y changas.
 
-Prototipo funcional de oficios y changas, con alcance contrastado con RoyalSolutions_Final.pdf y Royal_Solutions_MVP_Enlaces.pdf. Los originales se conservan fuera del repositorio, en `../material-fuente/`.
+Equipo: Elías Corti, Joaquín Cavanna, Marco Turchi y Tadeo Reinante.
 
-## Abrir
+## Ejecutar
 
-Ejecutar `abrir.bat`, o `python -m http.server 5501 --bind 127.0.0.1` y abrir http://127.0.0.1:5501/.
+Usar `abrir.bat`, o ejecutar `python -m http.server 5501 --bind 127.0.0.1` y abrir `http://127.0.0.1:5501/`.
 
-- `presentacion.html`: MVP frente a alcance completo, matriz de 67 entradas, mockup, guion y cuatro bloques de exposición.
-- `index.html#demo`: cliente y prestador en dos teléfonos.
-- `cliente.html`, `prestador.html`, `admin.html`: aplicaciones individuales.
+La raíz muestra directamente ambas apps en teléfonos. Los rótulos abren cada app individual: `cliente.html` y `prestador.html`. La primera visita prepara Lucía y Ramiro con los datos existentes, sin reiniciar el estado; las siguientes conservan las sesiones y los cierres de sesión. `presentacion.html` redirige a las apps para conservar enlaces antiguos. El panel interno sigue en `admin.html`, sin acceso desde la portada pública.
 
-Se necesita HTTP; no abrir las aplicaciones con `file://`.
+Ambas apps usan tema claro. No hay billetera de prestador, agenda semanal ni atajos de volver a contratar. Rubros y descripción se edita por separado de zona y disponibilidad.
 
-## Alcance
+Se requiere HTTP; no abrir con `file://`.
 
-El MVP permite publicar, postularse, contratar con fecha, confirmar/rechazar/cancelar, informar finalización, registrar el pago, calcular comisión y calificar. También contempla cuentas, recupero, catálogo con filtros, alta y certificados, tarjetas guardadas, historial y moderación básica.
+## Recorrido funcional
 
-Se adopta como criterio de lectura la columna MVP de la sección 14 (pp. 16-18). La página de presentación registra sus diferencias con las marcas de RF. No se afirma que ambos listados coincidan. “Avanzado” describe el detalle del recorrido y sus alternativas, no disponibilidad para producción.
+Publicar una necesidad, postular con precio y mensaje, elegir un prestador desde la solicitud o catálogo, acordar fecha/franja, confirmar o rechazar, informar ejecución, registrar pago y calificar. Se conservan búsqueda y filtros, favoritos, direcciones, mensajes por orden, notificaciones, alta y documentación, reputación e historial.
 
-Chat, mapas esquemáticos, favoritos, identidad, video y checkout representan ampliaciones documentadas del alcance completo. Tracking real, 2FA, referidos, fidelidad, fondo de garantía y otros módulos solo previstos no tienen una ejecución ficticia añadida.
+Efectivo, transferencia y Mercado Pago son operaciones de ejemplo. La comisión se registra internamente; el panel administrativo conserva el registro de su regularización. No existe una billetera ni gestión de saldo en la app del prestador.
 
-## Límites reales
+El estado se conserva en `localStorage` y se comparte entre apps del mismo navegador/origen. No hay backend, base remota, correo, GPS, push, cobros ni verificaciones documentales externas. Usar exclusivamente datos ficticios; no cargar documentos ni tarjetas reales.
 
-Estado ficticio en `localStorage` (`rs_db`), compartido por BroadcastChannel y eventos storage entre pestañas del mismo navegador y origen. Sin backend ni base remota, correo, push, GPS, consulta de antecedentes o biometría reales. Pagos y tokenización simulados; no hay cobros ni cuenta bancaria operativa. Contraseñas y archivos se guardan localmente: no cumple seguridad productiva ni el cifrado de CU-07. No cargar datos personales, documentos ni tarjetas reales.
+## Documentos actualizados
 
-Los barrios de Santa Fe son ejemplos. El PDF menciona Córdoba con alcance a definir; no se presenta una ciudad de lanzamiento como acordada.
+- POC: `output/pdf/RoyalSolutions_POC_Actualizado.pdf`.
+- DER: `output/pdf/RoyalSolutions_DER_Actualizado.pdf`.
+- [Comparación y cambios](docs/REVISION_DOCUMENTAL.md).
+- [Alcance y casos de uso editables](docs/SECCIONES_14_15_POC.md).
+- [Modelo, cardinalidades y reglas](docs/MODELO.md).
+- [Fuente del DER](docs/poc/modelo.py), [Mermaid](docs/poc/DER.mmd) y el DER completo Graphviz en `docs/poc/der/completo.dot`.
+- [Regeneración de documentos](docs/poc/LEEME.md).
 
-## Preparación de demo
+Se conservan el documento original y sus matrices; los agregados completan 38 requerimientos y 33 casos de uso. El DER es una sola lámina de 25 entidades y 40 relaciones. El documento y ambas apps usan el escudo con la corona confirmado por el equipo. Es un modelo lógico propuesto; la app aún usa objetos JSON. Los PDF generados y resultados de pruebas están ignorados en Git y se entregan como archivos locales.
 
-Contraseña común: `demo1234`. Cuentas: `lucia@demo.com` (cliente), `ramiro@demo.com` (prestador), `alejandro.paredes@demo.com` (corrección de documentos), `daniel.toledo@demo.com` (restricción por comisiones) y `admin@royal.com`.
+## Verificación
 
-Mantener el logo dos segundos, tocar cinco veces la versión o agregar `?dev=1` abre las herramientas. Cargar escenario demo inicia cliente y prestador y prepara tres postulaciones de ejemplo. Las postulaciones automáticas son una ayuda de presentación: no representan usuarios conectados. Aceptar, finalizar, pagar y calificar requieren acciones manuales.
+Con Node, Edge y el servidor en puerto 5501, ejecutar `npm install` y `npm test`. Playwright es una dependencia de desarrollo; las apps no necesitan build ni dependencias de ejecución. El resultado se guarda en `test-results/audit.json` y las capturas en `test-results/`.
 
-El plazo de confirmación de 15 minutos, límite de deuda de $15.000, máximo de tres solicitudes y clasificación de rubros son parámetros de prueba, no valores fijados por el PDF. El rango de comisión 3-5% sí está documentado; su distribución por rubro es de demo.
+Las pruebas incluyen los recorridos centrales, revisión de las pantallas y las eliminaciones solicitadas. No certifican una operación productiva ni servicios externos.
 
-## Documentación
+## Accesos de ejemplo
 
-- [Guía de exposición](docs/GUIA_DEFENSA.md).
-- [Modelo actual](docs/MODELO.md).
-- [Revisión documental](docs/REVISION_DOCUMENTAL.md).
+Contraseña: `demo1234`. Cliente: `lucia@demo.com`. Prestador: `ramiro@demo.com`. Interno: `admin@royal.com`. También existen perfiles con documentación observada y restricciones para comprobar alternativas.
 
-## Pruebas
-
-Con Node, Edge y servidor local en puerto 5501: `npm install` y `npm test`. Playwright solo se usa para pruebas; las aplicaciones no tienen build ni dependencias de ejecución. Resultados y capturas se escriben en `test-results/` (ignorado por Git).
-
-La verificación cubre reglas locales CU-01 a CU-23, pantallas y un circuito completo mediante controles visibles. No certifica servicios externos ni producción.
-
-## Publicación
-
-La revisión es local. Los PDF originales y el sitio publicado no se modificaron. El repositorio conserva su configuración estática Netlify: un push podría activar su despliegue, por lo que debe revisarse antes de publicar.
+Las herramientas de prueba se abren manteniendo el logo dos segundos, tocando cinco veces la versión del perfil o mediante `?dev=1`. `?reset=1` reinicia explícitamente los datos de ejemplo.
